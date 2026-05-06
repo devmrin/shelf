@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Plus, X } from "lucide-react";
+import { Plus, Star, X } from "lucide-react";
 import type { Book, BookDraft } from "../features/books/types";
 import {
   detectDuplicates,
@@ -17,8 +17,6 @@ type Props = {
   onSave: (data: BookDraft) => Promise<void>;
   editingBook?: Book;
   onCancelEdit?: () => void;
-  instantMode: boolean;
-  setInstantMode: (value: boolean) => void;
 };
 
 type FormValues = {
@@ -61,7 +59,7 @@ function toFormValues(book?: Book): FormValues {
 }
 
 export function BookForm(props: Props) {
-  const [showMore, setShowMore] = useState(false);
+  const [showMore, setShowMore] = useState(true);
   const [saving, setSaving] = useState(false);
   const [coverImage, setCoverImage] = useState<string | undefined>(
     props.editingBook?.coverImage,
@@ -88,6 +86,7 @@ export function BookForm(props: Props) {
   const authors = watch("authors") ?? [];
   const categories = watch("categories") ?? [];
   const tags = watch("tags") ?? [];
+  const rating = watch("rating");
   const author = authors
     .map((entry) => entry.trim())
     .filter(Boolean)
@@ -199,13 +198,15 @@ export function BookForm(props: Props) {
     const id = window.setTimeout(() => {
       void detectDuplicates({ title, author }).then((matches) => {
         setDuplicates(
-          matches.map(({ id, title, author }) => ({ id, title, author })),
+          matches
+            .filter((match) => match.id !== props.editingBook?.id)
+            .map(({ id, title, author }) => ({ id, title, author })),
         );
       });
     }, 220);
 
     return () => window.clearTimeout(id);
-  }, [title, author]);
+  }, [title, author, props.editingBook?.id]);
 
   useEffect(() => {
     const handler = (event: ClipboardEvent) => {
@@ -256,16 +257,10 @@ export function BookForm(props: Props) {
 
       await props.onSave(payload);
 
-      if (props.instantMode) {
-        reset(toFormValues());
-        setDuplicates([]);
-        setCoverImage(undefined);
-        setAdditionalImages([]);
-      } else {
-        reset();
-        setCoverImage(undefined);
-        setAdditionalImages([]);
-      }
+      reset(toFormValues());
+      setDuplicates([]);
+      setCoverImage(undefined);
+      setAdditionalImages([]);
 
       await clearDraft(DRAFT_KEY);
     } finally {
@@ -290,14 +285,6 @@ export function BookForm(props: Props) {
         <h3 className="text-sm font-semibold text-stone-800 dark:text-stone-200">
           {props.editingBook ? "Edit Book" : "Add Book"}
         </h3>
-        <label className="flex items-center gap-1 text-xs text-stone-600 dark:text-stone-300">
-          <input
-            type="checkbox"
-            checked={props.instantMode}
-            onChange={(event) => props.setInstantMode(event.target.checked)}
-          />
-          Instant Add
-        </label>
       </div>
 
       <input
@@ -309,18 +296,9 @@ export function BookForm(props: Props) {
       />
 
       <div className="space-y-1">
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-stone-600 dark:text-stone-300">
-            Authors
-          </span>
-          <button
-            type="button"
-            onClick={() => setValue("authors", [...authors, ""])}
-            className="inline-flex items-center gap-1 rounded-md border border-stone-300 px-2 py-1 text-[11px] hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
-          >
-            <Plus size={12} /> Add author
-          </button>
-        </div>
+        <span className="text-xs text-stone-600 dark:text-stone-300">
+          Authors
+        </span>
         {authors.map((_, index) => (
           <div key={index} className="flex items-center gap-2">
             <input
@@ -350,6 +328,13 @@ export function BookForm(props: Props) {
             ) : null}
           </div>
         ))}
+        <button
+          type="button"
+          onClick={() => setValue("authors", [...authors, ""])}
+          className="inline-flex items-center gap-1 rounded-md border border-stone-300 px-2 py-1 text-[11px] hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
+        >
+          <Plus size={12} /> Add author
+        </button>
       </div>
 
       {duplicates.length ? (
@@ -361,68 +346,66 @@ export function BookForm(props: Props) {
         </p>
       ) : null}
 
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className="h-8 rounded-md border border-stone-300 px-2 text-xs hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
-        >
-          Upload Cover
-        </button>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          className="hidden"
-          onChange={(event) => {
-            const files = Array.from(event.target.files ?? []);
-            if (files.length) void addImageFiles(files);
-            event.target.value = "";
-          }}
-        />
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          className="text-xs"
-          onChange={(event) => {
-            const files = Array.from(event.target.files ?? []);
-            if (files.length) void addImageFiles(files);
-            event.target.value = "";
-          }}
-        />
-      </div>
+      <button
+        type="button"
+        onClick={() => setShowMore((value) => !value)}
+        className="text-xs text-stone-600 hover:text-stone-900 dark:text-stone-300 dark:hover:text-stone-100"
+      >
+        {showMore ? "Hide details" : "More details"}
+      </button>
 
-      {coverImage ? (
-        <div className="relative mt-1">
-          <img
-            src={coverImage}
-            alt="Cover preview"
-            className="aspect-[3/4] w-28 rounded-md object-cover"
-          />
-          <button
-            type="button"
-            className="absolute -right-2 -top-2 rounded-full bg-stone-950 px-2 py-1 text-[10px] text-stone-50"
-            onClick={() => setCoverImage(undefined)}
-          >
-            Remove
-          </button>
-        </div>
-      ) : null}
-
-      {!props.instantMode ? (
-        <button
-          type="button"
-          onClick={() => setShowMore((value) => !value)}
-          className="text-xs text-stone-600 hover:text-stone-900 dark:text-stone-300 dark:hover:text-stone-100"
-        >
-          {showMore ? "Hide details" : "More details"}
-        </button>
-      ) : null}
-
-      {(showMore || !props.instantMode) && (
+      {showMore && (
         <div className="grid grid-cols-2 gap-2">
+          <div className="col-span-2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="h-8 rounded-md border border-stone-300 px-2 text-xs hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
+            >
+              Upload Cover
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(event) => {
+                const files = Array.from(event.target.files ?? []);
+                if (files.length) void addImageFiles(files);
+                event.target.value = "";
+              }}
+            />
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              className="text-xs"
+              onChange={(event) => {
+                const files = Array.from(event.target.files ?? []);
+                if (files.length) void addImageFiles(files);
+                event.target.value = "";
+              }}
+            />
+          </div>
+
+          {coverImage ? (
+            <div className="relative col-span-2 mt-1">
+              <img
+                src={coverImage}
+                alt="Cover preview"
+                className="aspect-[3/4] w-28 rounded-md object-cover"
+              />
+              <button
+                type="button"
+                className="absolute -right-2 -top-2 rounded-full bg-stone-950 px-2 py-1 text-[10px] text-stone-50"
+                onClick={() => setCoverImage(undefined)}
+              >
+                Remove
+              </button>
+            </div>
+          ) : null}
+
           <input
             {...register("isbn")}
             className="h-8 rounded-md border border-stone-300 bg-white px-2 text-xs dark:border-stone-700 dark:bg-stone-950"
@@ -439,20 +422,6 @@ export function BookForm(props: Props) {
             placeholder="Year"
             type="number"
           />
-          <MultiValueSelect
-            values={categories}
-            options={categoryTagOptions.categories}
-            placeholder="Select category"
-            addPlaceholder="New category"
-            onChange={(values) => setValue("categories", values)}
-          />
-          <MultiValueSelect
-            values={tags}
-            options={categoryTagOptions.tags}
-            placeholder="Select tag"
-            addPlaceholder="New tag"
-            onChange={(values) => setValue("tags", values)}
-          />
           <select
             {...register("status")}
             className="h-8 rounded-md border border-stone-300 bg-white px-2 text-xs dark:border-stone-700 dark:bg-stone-950"
@@ -461,25 +430,69 @@ export function BookForm(props: Props) {
             <option value="reading">Reading</option>
             <option value="completed">Completed</option>
           </select>
+          <div className="col-span-2">
+            <MultiValueSelect
+              values={categories}
+              options={categoryTagOptions.categories}
+              placeholder="Select category"
+              addPlaceholder="New category"
+              onChange={(values) => setValue("categories", values)}
+            />
+          </div>
+          <div className="col-span-2">
+            <MultiValueSelect
+              values={tags}
+              options={categoryTagOptions.tags}
+              placeholder="Select tag"
+              addPlaceholder="New tag"
+              onChange={(values) => setValue("tags", values)}
+            />
+          </div>
           <textarea
             {...register("notes")}
             className="col-span-2 h-16 rounded-md border border-stone-300 bg-white px-2 py-1 text-xs dark:border-stone-700 dark:bg-stone-950"
             placeholder="Notes"
           />
-          <input
-            {...register("rating", { valueAsNumber: true })}
-            className="h-8 rounded-md border border-stone-300 bg-white px-2 text-xs dark:border-stone-700 dark:bg-stone-950"
-            placeholder="Rating (1-5)"
-            type="number"
-            min={1}
-            max={5}
-          />
-          <label className="flex items-center gap-1 text-xs">
-            <input type="checkbox" {...register("isFavorite")} /> Favorite
-          </label>
-          <label className="flex items-center gap-1 text-xs">
-            <input type="checkbox" {...register("readyToDonate")} /> Donate
-          </label>
+          <div className="col-span-2 rounded-md border border-stone-300 bg-white px-2 py-1.5 text-xs dark:border-stone-700 dark:bg-stone-950">
+            <div className="mb-1 text-[11px] text-stone-500 dark:text-stone-400">
+              Rating
+            </div>
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  type="button"
+                  onClick={() => setValue("rating", star)}
+                  className="rounded p-0.5 hover:bg-stone-100 dark:hover:bg-stone-800"
+                  aria-label={`Set rating ${star}`}
+                >
+                  <Star
+                    size={16}
+                    className={
+                      (rating ?? 0) >= star
+                        ? "fill-amber-400 text-amber-500"
+                        : "text-stone-400"
+                    }
+                  />
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setValue("rating", undefined)}
+                className="ml-1 rounded border border-stone-300 px-1.5 py-0.5 text-[11px] hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+          <div className="col-span-2 flex items-center gap-3 text-xs">
+            <label className="flex items-center gap-1 text-xs">
+              <input type="checkbox" {...register("isFavorite")} /> Favorite
+            </label>
+            <label className="flex items-center gap-1 text-xs">
+              <input type="checkbox" {...register("readyToDonate")} /> Donate
+            </label>
+          </div>
         </div>
       )}
 
@@ -489,11 +502,7 @@ export function BookForm(props: Props) {
           disabled={!canSave || saving}
           className="h-9 flex-1 rounded-lg bg-stone-900 text-sm font-medium text-stone-50 disabled:opacity-40 dark:bg-stone-100 dark:text-stone-900"
         >
-          {saving
-            ? "Saving..."
-            : props.instantMode
-              ? "Add (Enter)"
-              : "Save Book"}
+          {saving ? "Saving..." : props.editingBook ? "Update" : "Save Book"}
         </button>
         {props.editingBook && props.onCancelEdit ? (
           <button

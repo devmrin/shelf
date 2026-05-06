@@ -7,8 +7,6 @@ type Props = {
   stats: CollectionStats;
   quickFilters: QuickFilter[];
   onToggleQuickFilter: (value: QuickFilter) => void;
-  instantMode: boolean;
-  setInstantMode: (value: boolean) => void;
   onExport: () => void;
   onImport: (file: File) => Promise<void>;
   onBulkDelete: () => Promise<void>;
@@ -44,8 +42,6 @@ export function Sidebar(props: Props) {
         onSave={props.onSave}
         editingBook={props.editingBook}
         onCancelEdit={props.onCancelEdit}
-        instantMode={props.instantMode}
-        setInstantMode={props.setInstantMode}
       />
 
       <section className="rounded-xl border border-stone-200 bg-stone-50 p-3 text-sm dark:border-stone-800 dark:bg-stone-900">

@@ -53,7 +53,6 @@ export function ShelfPage() {
   const [search, setSearch] = useState("");
   const [activeBook, setActiveBook] = useState<Book | undefined>();
   const [editingBook, setEditingBook] = useState<Book | undefined>();
-  const [instantMode, setInstantMode] = useState(true);
   const [contextBook, setContextBook] = useState<Book | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [storage, setStorage] = useState({ used: 0, quota: 0, percent: 0 });
@@ -245,8 +244,6 @@ export function ShelfPage() {
               stats={stats}
               quickFilters={quickFilters}
               onToggleQuickFilter={toggleQuickFilter}
-              instantMode={instantMode}
-              setInstantMode={setInstantMode}
               onExport={() => void handleExport()}
               onImport={handleImport}
               onBulkDelete={deleteSelected}
@@ -290,7 +287,7 @@ export function ShelfPage() {
                   debouncedSearch
                     ? "Try another query or clear filters."
                     : (quickFilterEmptyState ??
-                      "Add your first book from the left panel. Use instant add mode for rapid entry.")
+                      "Add your first book from the left panel.")
                 }
                 action={
                   <button
@@ -383,8 +380,6 @@ export function ShelfPage() {
                 stats={stats}
                 quickFilters={quickFilters}
                 onToggleQuickFilter={toggleQuickFilter}
-                instantMode={instantMode}
-                setInstantMode={setInstantMode}
                 onExport={() => void handleExport()}
                 onImport={handleImport}
                 onBulkDelete={deleteSelected}
