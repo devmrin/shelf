@@ -242,8 +242,15 @@ export function BookForm(props: Props) {
     if (!canSave || saving) return;
     setSaving(true);
     try {
+      const normalizedPublishedYear =
+        typeof values.publishedYear === "number" &&
+        Number.isFinite(values.publishedYear)
+          ? values.publishedYear
+          : undefined;
+
       const payload: BookDraft = {
         ...values,
+        publishedYear: normalizedPublishedYear,
         author:
           values.authors
             .map((entry) => entry.trim())
@@ -258,6 +265,7 @@ export function BookForm(props: Props) {
       await props.onSave(payload);
 
       reset(toFormValues());
+      setValue("publishedYear", undefined);
       setDuplicates([]);
       setCoverImage(undefined);
       setAdditionalImages([]);
@@ -417,7 +425,16 @@ export function BookForm(props: Props) {
             placeholder="Publisher"
           />
           <input
-            {...register("publishedYear", { valueAsNumber: true })}
+            {...register("publishedYear", {
+              setValueAs: (value) => {
+                if (value === "" || value === null || value === undefined) {
+                  return undefined;
+                }
+
+                const parsed = Number(value);
+                return Number.isFinite(parsed) ? parsed : undefined;
+              },
+            })}
             className="h-8 rounded-md border border-stone-300 bg-white px-2 text-xs dark:border-stone-700 dark:bg-stone-950"
             placeholder="Year"
             type="number"
