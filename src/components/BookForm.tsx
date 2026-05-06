@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useLiveQuery } from "dexie-react-hooks";
+import { Plus, X } from "lucide-react";
 import type { Book, BookDraft } from "../features/books/types";
 import {
   detectDuplicates,
   clearDraft,
+  getCategoryTagOptions,
   getDraft,
   upsertDraft,
 } from "../features/books/repository";
 import { filesFromClipboard, optimizeImage } from "../utils/image";
+import { MultiValueSelect } from "./MultiValueSelect";
 
 type Props = {
   onSave: (data: BookDraft) => Promise<void>;
@@ -19,12 +23,12 @@ type Props = {
 
 type FormValues = {
   title: string;
-  author: string;
+  authors: string[];
   isbn: string;
   publisher: string;
   publishedYear?: number;
-  categories: string;
-  tags: string;
+  categories: string[];
+  tags: string[];
   notes: string;
   rating?: number;
   status: "unread" | "reading" | "completed";
@@ -35,14 +39,19 @@ type FormValues = {
 const DRAFT_KEY = "book-form-draft";
 
 function toFormValues(book?: Book): FormValues {
+  const authorList = (book?.author ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
   return {
     title: book?.title ?? "",
-    author: book?.author ?? "",
+    authors: authorList.length ? authorList : [""],
     isbn: book?.isbn ?? "",
     publisher: book?.publisher ?? "",
     publishedYear: book?.publishedYear,
-    categories: (book?.categories ?? []).join(", "),
-    tags: (book?.tags ?? []).join(", "),
+    categories: book?.categories ?? [],
+    tags: book?.tags ?? [],
     notes: book?.notes ?? "",
     rating: book?.rating,
     status: book?.status ?? "unread",
@@ -65,12 +74,24 @@ export function BookForm(props: Props) {
   >([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const { register, handleSubmit, watch, reset } = useForm<FormValues>({
-    defaultValues: toFormValues(props.editingBook),
-  });
+  const { register, handleSubmit, watch, reset, setValue } =
+    useForm<FormValues>({
+      defaultValues: toFormValues(props.editingBook),
+    });
+
+  const categoryTagOptions = useLiveQuery(() => getCategoryTagOptions(), [], {
+    categories: [],
+    tags: [],
+  }) ?? { categories: [], tags: [] };
 
   const title = watch("title");
-  const author = watch("author");
+  const authors = watch("authors") ?? [];
+  const categories = watch("categories") ?? [];
+  const tags = watch("tags") ?? [];
+  const author = authors
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .join(", ");
   const formSnapshot = watch();
 
   useEffect(() => {
@@ -89,13 +110,68 @@ export function BookForm(props: Props) {
       const draft = await getDraft(DRAFT_KEY);
       if (!draft?.payload) return;
       try {
-        const parsed = JSON.parse(draft.payload) as FormValues & {
-          coverImage?: string;
-          additionalImages?: string[];
-        };
-        reset(parsed);
-        setCoverImage(parsed.coverImage);
-        setAdditionalImages(parsed.additionalImages ?? []);
+        const parsed = JSON.parse(draft.payload) as Record<string, unknown>;
+
+        const parsedCategories = Array.isArray(parsed.categories)
+          ? parsed.categories
+              .map((entry) => String(entry).trim())
+              .filter(Boolean)
+          : typeof parsed.categories === "string"
+            ? parsed.categories
+                .split(",")
+                .map((entry: string) => entry.trim())
+                .filter(Boolean)
+            : [];
+
+        const parsedTags = Array.isArray(parsed.tags)
+          ? parsed.tags.map((entry) => String(entry).trim()).filter(Boolean)
+          : typeof parsed.tags === "string"
+            ? parsed.tags
+                .split(",")
+                .map((entry: string) => entry.trim())
+                .filter(Boolean)
+            : [];
+
+        const parsedAuthors = Array.isArray(parsed.authors)
+          ? parsed.authors.map((entry) => String(entry).trim()).filter(Boolean)
+          : typeof parsed.author === "string"
+            ? parsed.author
+                .split(",")
+                .map((entry: string) => entry.trim())
+                .filter(Boolean)
+            : [];
+
+        reset({
+          title: typeof parsed.title === "string" ? parsed.title : "",
+          authors: parsedAuthors.length ? parsedAuthors : [""],
+          isbn: typeof parsed.isbn === "string" ? parsed.isbn : "",
+          publisher:
+            typeof parsed.publisher === "string" ? parsed.publisher : "",
+          publishedYear:
+            typeof parsed.publishedYear === "number"
+              ? parsed.publishedYear
+              : undefined,
+          categories: parsedCategories,
+          tags: parsedTags,
+          notes: typeof parsed.notes === "string" ? parsed.notes : "",
+          rating: typeof parsed.rating === "number" ? parsed.rating : undefined,
+          status:
+            parsed.status === "reading" || parsed.status === "completed"
+              ? parsed.status
+              : "unread",
+          readyToDonate: Boolean(parsed.readyToDonate),
+          isFavorite: Boolean(parsed.isFavorite),
+        });
+        setCoverImage(
+          typeof parsed.coverImage === "string" ? parsed.coverImage : undefined,
+        );
+        setAdditionalImages(
+          Array.isArray(parsed.additionalImages)
+            ? parsed.additionalImages
+                .map((entry) => String(entry).trim())
+                .filter(Boolean)
+            : [],
+        );
       } catch {
         // noop
       }
@@ -167,14 +243,13 @@ export function BookForm(props: Props) {
     try {
       const payload: BookDraft = {
         ...values,
-        categories: values.categories
-          .split(",")
-          .map((entry) => entry.trim())
-          .filter(Boolean),
-        tags: values.tags
-          .split(",")
-          .map((entry) => entry.trim())
-          .filter(Boolean),
+        author:
+          values.authors
+            .map((entry) => entry.trim())
+            .filter(Boolean)
+            .join(", ") || undefined,
+        categories: values.categories,
+        tags: values.tags,
         coverImage,
         additionalImages,
       };
@@ -182,7 +257,8 @@ export function BookForm(props: Props) {
       await props.onSave(payload);
 
       if (props.instantMode) {
-        reset({ ...values, title: "", author: "" });
+        reset(toFormValues());
+        setDuplicates([]);
         setCoverImage(undefined);
         setAdditionalImages([]);
       } else {
@@ -231,12 +307,50 @@ export function BookForm(props: Props) {
         autoFocus
         aria-label="Book title"
       />
-      <input
-        {...register("author")}
-        className="h-9 w-full rounded-lg border border-stone-300 bg-white px-2 text-sm outline-none focus:ring-2 focus:ring-stone-400 dark:border-stone-700 dark:bg-stone-950"
-        placeholder="Author"
-        aria-label="Book author"
-      />
+
+      <div className="space-y-1">
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-stone-600 dark:text-stone-300">
+            Authors
+          </span>
+          <button
+            type="button"
+            onClick={() => setValue("authors", [...authors, ""])}
+            className="inline-flex items-center gap-1 rounded-md border border-stone-300 px-2 py-1 text-[11px] hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
+          >
+            <Plus size={12} /> Add author
+          </button>
+        </div>
+        {authors.map((_, index) => (
+          <div key={index} className="flex items-center gap-2">
+            <input
+              {...register(`authors.${index}` as const)}
+              className="h-9 w-full rounded-lg border border-stone-300 bg-white px-2 text-sm outline-none focus:ring-2 focus:ring-stone-400 dark:border-stone-700 dark:bg-stone-950"
+              placeholder={`Author ${index + 1}`}
+              aria-label={`Book author ${index + 1}`}
+            />
+            {authors.length > 1 ? (
+              <button
+                type="button"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-stone-300 hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
+                onClick={() =>
+                  setValue(
+                    "authors",
+                    authors.length > 1
+                      ? authors.filter(
+                          (__, removeIndex) => removeIndex !== index,
+                        )
+                      : [""],
+                  )
+                }
+                aria-label={`Remove author ${index + 1}`}
+              >
+                <X size={14} />
+              </button>
+            ) : null}
+          </div>
+        ))}
+      </div>
 
       {duplicates.length ? (
         <p className="rounded-md bg-amber-100 px-2 py-1 text-xs text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
@@ -325,15 +439,19 @@ export function BookForm(props: Props) {
             placeholder="Year"
             type="number"
           />
-          <input
-            {...register("categories")}
-            className="h-8 rounded-md border border-stone-300 bg-white px-2 text-xs dark:border-stone-700 dark:bg-stone-950"
-            placeholder="Categories (comma)"
+          <MultiValueSelect
+            values={categories}
+            options={categoryTagOptions.categories}
+            placeholder="Select category"
+            addPlaceholder="New category"
+            onChange={(values) => setValue("categories", values)}
           />
-          <input
-            {...register("tags")}
-            className="h-8 rounded-md border border-stone-300 bg-white px-2 text-xs dark:border-stone-700 dark:bg-stone-950"
-            placeholder="Tags (comma)"
+          <MultiValueSelect
+            values={tags}
+            options={categoryTagOptions.tags}
+            placeholder="Select tag"
+            addPlaceholder="New tag"
+            onChange={(values) => setValue("tags", values)}
           />
           <select
             {...register("status")}

@@ -33,6 +33,53 @@ function normalize(value?: string) {
   return value?.trim().toLowerCase() ?? ''
 }
 
+async function upsertTaxonomyValues(payload: { categories?: string[]; tags?: string[] }) {
+  const categories = [...new Set((payload.categories ?? []).map((value) => value.trim()).filter(Boolean))]
+  const tags = [...new Set((payload.tags ?? []).map((value) => value.trim()).filter(Boolean))]
+
+  if (categories.length) {
+    const existing = await db.categories
+      .where('value')
+      .anyOf(categories)
+      .toArray()
+    const existingValues = new Set(existing.map((entry) => entry.value))
+    const now = Date.now()
+
+    const fresh = categories
+      .filter((value) => !existingValues.has(value))
+      .map((value) => ({
+        id: createId('category'),
+        value,
+        createdAt: now,
+      }))
+
+    if (fresh.length) {
+      await db.categories.bulkPut(fresh)
+    }
+  }
+
+  if (tags.length) {
+    const existing = await db.tags
+      .where('value')
+      .anyOf(tags)
+      .toArray()
+    const existingValues = new Set(existing.map((entry) => entry.value))
+    const now = Date.now()
+
+    const fresh = tags
+      .filter((value) => !existingValues.has(value))
+      .map((value) => ({
+        id: createId('tag'),
+        value,
+        createdAt: now,
+      }))
+
+    if (fresh.length) {
+      await db.tags.bulkPut(fresh)
+    }
+  }
+}
+
 function sortBooks(books: Book[], sort: SortMode) {
   const cloned = [...books]
 
@@ -109,11 +156,16 @@ export async function addBook(input: BookDraft) {
   }
 
   await db.books.add(book)
+  await upsertTaxonomyValues({ categories: book.categories, tags: book.tags })
   return book
 }
 
 export async function updateBook(id: string, patch: Partial<Book>) {
   await db.books.update(id, { ...patch, updatedAt: Date.now() })
+
+  if (patch.categories || patch.tags) {
+    await upsertTaxonomyValues({ categories: patch.categories, tags: patch.tags })
+  }
 }
 
 export async function softDeleteBooks(ids: string[]) {
@@ -235,6 +287,11 @@ export async function bulkEditBooks(
     donate?: boolean
   },
 ) {
+  await upsertTaxonomyValues({
+    categories: patch.addCategory ? [patch.addCategory] : [],
+    tags: patch.addTag ? [patch.addTag] : [],
+  })
+
   const books = await db.books.bulkGet(ids)
   const updates = books
     .filter((book): book is Book => Boolean(book))
@@ -258,6 +315,31 @@ export async function bulkEditBooks(
     })
 
   await db.books.bulkUpdate(updates)
+}
+
+export async function getCategoryTagOptions() {
+  const [categoryRows, tagRows, books] = await Promise.all([
+    db.categories.toArray(),
+    db.tags.toArray(),
+    db.books.filter((book) => !book.deletedAt).toArray(),
+  ])
+
+  const categorySet = new Set(categoryRows.map((entry) => entry.value))
+  const tagSet = new Set(tagRows.map((entry) => entry.value))
+
+  for (const book of books) {
+    for (const category of book.categories ?? []) {
+      if (category.trim()) categorySet.add(category.trim())
+    }
+    for (const tag of book.tags ?? []) {
+      if (tag.trim()) tagSet.add(tag.trim())
+    }
+  }
+
+  return {
+    categories: [...categorySet].sort((a, b) => a.localeCompare(b)),
+    tags: [...tagSet].sort((a, b) => a.localeCompare(b)),
+  }
 }
 
 export async function collectionStats(): Promise<CollectionStats> {

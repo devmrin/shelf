@@ -54,15 +54,21 @@ export function GalleryView({
                 </p>
               </div>
             )}
-            <div className="mt-2 flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <h3 className="truncate text-sm font-medium text-stone-900 dark:text-stone-100">
-                  {book.title}
-                </h3>
-                <p className="truncate text-xs text-stone-600 dark:text-stone-300">
-                  {book.author || "Unknown author"}
-                </p>
-              </div>
+            <div
+              className={`mt-2 flex items-start gap-2 ${
+                book.coverImage ? "justify-between" : "justify-end"
+              }`}
+            >
+              {book.coverImage ? (
+                <div className="min-w-0">
+                  <h3 className="truncate text-sm font-medium text-stone-900 dark:text-stone-100">
+                    {book.title}
+                  </h3>
+                  <p className="truncate text-xs text-stone-600 dark:text-stone-300">
+                    {book.author || "Unknown author"}
+                  </p>
+                </div>
+              ) : null}
               <div className="flex shrink-0 items-center gap-1">
                 <button
                   type="button"
