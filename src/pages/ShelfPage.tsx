@@ -203,8 +203,8 @@ export function ShelfPage() {
   });
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_10%_20%,rgba(231,229,228,0.5),transparent_45%),radial-gradient(circle_at_100%_0%,rgba(214,211,209,0.3),transparent_28%)] text-stone-800 dark:bg-[radial-gradient(circle_at_10%_20%,rgba(28,25,23,0.6),transparent_45%),radial-gradient(circle_at_100%_0%,rgba(41,37,36,0.6),transparent_28%)] dark:text-stone-100">
-      <div className="mx-auto flex min-h-screen max-w-[1600px]">
+    <div className="h-screen overflow-hidden bg-[radial-gradient(circle_at_10%_20%,rgba(231,229,228,0.5),transparent_45%),radial-gradient(circle_at_100%_0%,rgba(214,211,209,0.3),transparent_28%)] text-stone-800 dark:bg-[radial-gradient(circle_at_10%_20%,rgba(28,25,23,0.6),transparent_45%),radial-gradient(circle_at_100%_0%,rgba(41,37,36,0.6),transparent_28%)] dark:text-stone-100">
+      <div className="mx-auto flex h-full max-w-[1600px]">
         {!isMobile ? (
           <div className="w-[320px] shrink-0">
             <Sidebar
@@ -233,7 +233,7 @@ export function ShelfPage() {
           </div>
         ) : null}
 
-        <main className="relative min-w-0 flex-1">
+        <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
           <TopToolbar
             search={search}
             onSearchChange={setSearch}
@@ -245,64 +245,66 @@ export function ShelfPage() {
             onThemeChange={setDarkMode}
           />
 
-          {books.length === 0 ? (
-            <EmptyState
-              title={
-                debouncedSearch || quickFilters.length
-                  ? "No results"
-                  : "Your shelf is empty"
-              }
-              description={
-                debouncedSearch
-                  ? "Try another query or clear filters."
-                  : (quickFilterEmptyState ??
-                    "Add your first book from the left panel. Use instant add mode for rapid entry.")
-              }
-              action={
-                <button
-                  type="button"
-                  className="rounded-md bg-stone-900 px-3 py-1.5 text-sm text-stone-50 dark:bg-stone-100 dark:text-stone-900"
-                  onClick={() => {
-                    const input = document.querySelector<HTMLInputElement>(
-                      'input[aria-label="Book title"]',
-                    );
-                    input?.focus();
-                    if (isMobile) setSidebarOpen(true);
-                  }}
-                >
-                  Add a Book
-                </button>
-              }
-            />
-          ) : viewMode === "gallery" ? (
-            <GalleryView
-              books={books}
-              onOpenBook={setActiveBook}
-              onToggleFavorite={(book) => {
-                void updateBook(book.id, { isFavorite: !book.isFavorite });
-                addToast({ message: `${book.title} favorite updated` });
-              }}
-              onContextMenu={(event, book) => {
-                event.preventDefault();
-                setContextBook(book);
-              }}
-            />
-          ) : (
-            <TableView
-              books={books}
-              selectedIds={selectedIds}
-              onToggleSelect={toggle}
-              onOpenBook={setActiveBook}
-              columnVisibility={columnVisibility}
-              onColumnVisibilityChange={(value) => {
-                if (typeof value === "function") {
-                  setColumnVisibility(value(columnVisibility));
-                } else {
-                  setColumnVisibility(value);
+          <div className="min-h-0 flex-1">
+            {books.length === 0 ? (
+              <EmptyState
+                title={
+                  debouncedSearch || quickFilters.length
+                    ? "No results"
+                    : "Your shelf is empty"
                 }
-              }}
-            />
-          )}
+                description={
+                  debouncedSearch
+                    ? "Try another query or clear filters."
+                    : (quickFilterEmptyState ??
+                      "Add your first book from the left panel. Use instant add mode for rapid entry.")
+                }
+                action={
+                  <button
+                    type="button"
+                    className="rounded-md bg-stone-900 px-3 py-1.5 text-sm text-stone-50 dark:bg-stone-100 dark:text-stone-900"
+                    onClick={() => {
+                      const input = document.querySelector<HTMLInputElement>(
+                        'input[aria-label="Book title"]',
+                      );
+                      input?.focus();
+                      if (isMobile) setSidebarOpen(true);
+                    }}
+                  >
+                    Add a Book
+                  </button>
+                }
+              />
+            ) : viewMode === "gallery" ? (
+              <GalleryView
+                books={books}
+                onOpenBook={setActiveBook}
+                onToggleFavorite={(book) => {
+                  void updateBook(book.id, { isFavorite: !book.isFavorite });
+                  addToast({ message: `${book.title} favorite updated` });
+                }}
+                onContextMenu={(event, book) => {
+                  event.preventDefault();
+                  setContextBook(book);
+                }}
+              />
+            ) : (
+              <TableView
+                books={books}
+                selectedIds={selectedIds}
+                onToggleSelect={toggle}
+                onOpenBook={setActiveBook}
+                columnVisibility={columnVisibility}
+                onColumnVisibilityChange={(value) => {
+                  if (typeof value === "function") {
+                    setColumnVisibility(value(columnVisibility));
+                  } else {
+                    setColumnVisibility(value);
+                  }
+                }}
+              />
+            )}
+          </div>
         </main>
       </div>
 

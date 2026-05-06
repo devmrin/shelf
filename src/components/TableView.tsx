@@ -116,7 +116,7 @@ export function TableView(props: Props) {
   });
 
   return (
-    <div className="px-3 pb-3 pt-2 sm:px-4">
+    <div className="flex h-full min-h-0 flex-col px-3 pb-3 pt-2 sm:px-4">
       <div className="mb-2 flex flex-wrap gap-2">
         {table
           .getAllLeafColumns()
@@ -138,7 +138,7 @@ export function TableView(props: Props) {
 
       <div
         ref={containerRef}
-        className="h-[calc(100vh-10rem)] overflow-auto rounded-xl border border-stone-200 dark:border-stone-800"
+        className="min-h-0 flex-1 overflow-auto rounded-xl border border-stone-200 dark:border-stone-800"
       >
         <table className="w-full border-collapse text-sm">
           <thead className="sticky top-0 z-20 bg-stone-100 dark:bg-stone-900">

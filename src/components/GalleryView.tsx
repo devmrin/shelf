@@ -39,7 +39,7 @@ export function GalleryView({
   return (
     <div
       ref={parentRef}
-      className="h-[calc(100vh-7.5rem)] overflow-auto px-3 py-3 sm:px-4"
+      className="h-full min-h-0 overflow-auto px-3 py-3 sm:px-4"
     >
       <div style={{ height: contentHeight, position: "relative" }}>
         {virtualItems.map((item) => {
