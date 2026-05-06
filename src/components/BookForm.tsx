@@ -34,6 +34,23 @@ type FormValues = {
 
 const DRAFT_KEY = "book-form-draft";
 
+function toFormValues(book?: Book): FormValues {
+  return {
+    title: book?.title ?? "",
+    author: book?.author ?? "",
+    isbn: book?.isbn ?? "",
+    publisher: book?.publisher ?? "",
+    publishedYear: book?.publishedYear,
+    categories: (book?.categories ?? []).join(", "),
+    tags: (book?.tags ?? []).join(", "),
+    notes: book?.notes ?? "",
+    rating: book?.rating,
+    status: book?.status ?? "unread",
+    readyToDonate: book?.readyToDonate ?? false,
+    isFavorite: book?.isFavorite ?? false,
+  };
+}
+
 export function BookForm(props: Props) {
   const [showMore, setShowMore] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -49,25 +66,22 @@ export function BookForm(props: Props) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const { register, handleSubmit, watch, reset } = useForm<FormValues>({
-    defaultValues: {
-      title: props.editingBook?.title ?? "",
-      author: props.editingBook?.author ?? "",
-      isbn: props.editingBook?.isbn ?? "",
-      publisher: props.editingBook?.publisher ?? "",
-      publishedYear: props.editingBook?.publishedYear,
-      categories: (props.editingBook?.categories ?? []).join(", "),
-      tags: (props.editingBook?.tags ?? []).join(", "),
-      notes: props.editingBook?.notes ?? "",
-      rating: props.editingBook?.rating,
-      status: props.editingBook?.status ?? "unread",
-      readyToDonate: props.editingBook?.readyToDonate ?? false,
-      isFavorite: props.editingBook?.isFavorite ?? false,
-    },
+    defaultValues: toFormValues(props.editingBook),
   });
 
   const title = watch("title");
   const author = watch("author");
   const formSnapshot = watch();
+
+  useEffect(() => {
+    reset(toFormValues(props.editingBook));
+    setCoverImage(props.editingBook?.coverImage);
+    setAdditionalImages(props.editingBook?.additionalImages ?? []);
+
+    if (props.editingBook) {
+      setShowMore(true);
+    }
+  }, [props.editingBook, reset]);
 
   useEffect(() => {
     void (async () => {

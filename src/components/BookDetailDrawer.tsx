@@ -1,13 +1,15 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { X, Star } from "lucide-react";
+import { Pencil, Star, Trash2, X } from "lucide-react";
 import type { Book } from "../features/books/types";
 
 type Props = {
   book?: Book;
   onClose: () => void;
+  onEdit: (book: Book) => void;
+  onDelete: (book: Book) => void;
 };
 
-export function BookDetailDrawer({ book, onClose }: Props) {
+export function BookDetailDrawer({ book, onClose, onEdit, onDelete }: Props) {
   return (
     <AnimatePresence>
       {book ? (
@@ -72,6 +74,23 @@ export function BookDetailDrawer({ book, onClose }: Props) {
                 ))}
               </div>
             ) : null}
+
+            <div className="mb-4 flex gap-2">
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 rounded-md border border-stone-300 px-2.5 py-1.5 text-xs hover:bg-stone-200 dark:border-stone-700 dark:hover:bg-stone-800"
+                onClick={() => onEdit(book)}
+              >
+                <Pencil size={13} /> Edit
+              </button>
+              <button
+                type="button"
+                className="inline-flex items-center gap-1 rounded-md border border-stone-300 px-2.5 py-1.5 text-xs hover:bg-stone-200 dark:border-stone-700 dark:hover:bg-stone-800"
+                onClick={() => onDelete(book)}
+              >
+                <Trash2 size={13} /> Delete
+              </button>
+            </div>
 
             <dl className="grid grid-cols-2 gap-3 text-sm">
               <div>

@@ -52,6 +52,7 @@ function toFilters(quickFilters: QuickFilter[]) {
 export function ShelfPage() {
   const [search, setSearch] = useState("");
   const [activeBook, setActiveBook] = useState<Book | undefined>();
+  const [editingBook, setEditingBook] = useState<Book | undefined>();
   const [instantMode, setInstantMode] = useState(true);
   const [contextBook, setContextBook] = useState<Book | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -125,8 +126,38 @@ export function ShelfPage() {
   };
 
   const handleSave = async (payload: BookDraft) => {
+    if (editingBook) {
+      await updateBook(editingBook.id, payload);
+      addToast({ message: `${editingBook.title} updated` });
+      setEditingBook(undefined);
+      return;
+    }
     await addBook(payload);
     addToast({ message: "Book added" });
+  };
+
+  const startEditing = (book: Book) => {
+    setEditingBook(book);
+    if (isMobile) setSidebarOpen(true);
+  };
+
+  const deleteOne = async (book: Book) => {
+    const confirmed = window.confirm(`Delete \"${book.title}\"?`);
+    if (!confirmed) return;
+
+    await softDeleteBooks([book.id]);
+
+    if (activeBook?.id === book.id) setActiveBook(undefined);
+    if (contextBook?.id === book.id) setContextBook(null);
+    if (editingBook?.id === book.id) setEditingBook(undefined);
+
+    addToast({
+      message: `${book.title} moved to trash`,
+      actionLabel: "Undo",
+      onAction: () => {
+        void restoreBooks([book.id]);
+      },
+    });
   };
 
   const handleExport = async () => {
@@ -209,6 +240,8 @@ export function ShelfPage() {
           <div className="w-[320px] shrink-0">
             <Sidebar
               onSave={handleSave}
+              editingBook={editingBook}
+              onCancelEdit={() => setEditingBook(undefined)}
               stats={stats}
               quickFilters={quickFilters}
               onToggleQuickFilter={toggleQuickFilter}
@@ -283,6 +316,16 @@ export function ShelfPage() {
                   void updateBook(book.id, { isFavorite: !book.isFavorite });
                   addToast({ message: `${book.title} favorite updated` });
                 }}
+                onToggleDonate={(book) => {
+                  void updateBook(book.id, {
+                    readyToDonate: !book.readyToDonate,
+                  });
+                  addToast({ message: `${book.title} donate flag updated` });
+                }}
+                onEditBook={startEditing}
+                onDeleteBook={(book) => {
+                  void deleteOne(book);
+                }}
                 onContextMenu={(event, book) => {
                   event.preventDefault();
                   setContextBook(book);
@@ -294,6 +337,10 @@ export function ShelfPage() {
                 selectedIds={selectedIds}
                 onToggleSelect={toggle}
                 onOpenBook={setActiveBook}
+                onEditBook={startEditing}
+                onDeleteBook={(book) => {
+                  void deleteOne(book);
+                }}
                 columnVisibility={columnVisibility}
                 onColumnVisibilityChange={(value) => {
                   if (typeof value === "function") {
@@ -331,6 +378,8 @@ export function ShelfPage() {
                   await handleSave(payload);
                   setSidebarOpen(false);
                 }}
+                editingBook={editingBook}
+                onCancelEdit={() => setEditingBook(undefined)}
                 stats={stats}
                 quickFilters={quickFilters}
                 onToggleQuickFilter={toggleQuickFilter}
@@ -399,11 +448,21 @@ export function ShelfPage() {
               type="button"
               className="block w-full rounded-md px-2 py-1 text-left hover:bg-stone-100 dark:hover:bg-stone-800"
               onClick={() => {
-                void softDeleteBooks([contextBook.id]);
+                startEditing(contextBook);
                 setContextBook(null);
               }}
             >
-              Move to Trash
+              Edit Book
+            </button>
+            <button
+              type="button"
+              className="block w-full rounded-md px-2 py-1 text-left hover:bg-stone-100 dark:hover:bg-stone-800"
+              onClick={() => {
+                void deleteOne(contextBook);
+                setContextBook(null);
+              }}
+            >
+              Delete Book
             </button>
           </div>
         </div>
@@ -412,6 +471,13 @@ export function ShelfPage() {
       <BookDetailDrawer
         book={activeBook}
         onClose={() => setActiveBook(undefined)}
+        onEdit={(book) => {
+          startEditing(book);
+          setActiveBook(undefined);
+        }}
+        onDelete={(book) => {
+          void deleteOne(book);
+        }}
       />
       <ToastStack
         items={toasts}

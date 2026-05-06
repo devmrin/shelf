@@ -1,4 +1,4 @@
-import type { BookDraft, QuickFilter } from "../features/books/types";
+import type { Book, BookDraft, QuickFilter } from "../features/books/types";
 import type { CollectionStats } from "../features/books/repository";
 import { BookForm } from "./BookForm";
 
@@ -18,6 +18,8 @@ type Props = {
   onBulkAddTag: (value: string) => Promise<void>;
   selectedCount: number;
   storageUsage: { used: number; quota: number; percent: number };
+  editingBook?: Book;
+  onCancelEdit?: () => void;
 };
 
 const QUICK_FILTERS: QuickFilter[] = [
@@ -40,6 +42,8 @@ export function Sidebar(props: Props) {
     <aside className="flex h-full flex-col gap-3 overflow-y-auto border-r border-stone-200 bg-stone-100 p-3 dark:border-stone-800 dark:bg-stone-950">
       <BookForm
         onSave={props.onSave}
+        editingBook={props.editingBook}
+        onCancelEdit={props.onCancelEdit}
         instantMode={props.instantMode}
         setInstantMode={props.setInstantMode}
       />

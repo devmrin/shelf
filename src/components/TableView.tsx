@@ -1,4 +1,4 @@
-import { useMemo, useRef } from "react";
+import { useMemo } from "react";
 import {
   createColumnHelper,
   flexRender,
@@ -8,8 +8,7 @@ import {
   type Updater,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { useVirtualizer } from "@tanstack/react-virtual";
-import { Heart } from "lucide-react";
+import { Heart, Pencil, Trash2 } from "lucide-react";
 import type { Book } from "../features/books/types";
 
 type Props = {
@@ -17,6 +16,8 @@ type Props = {
   selectedIds: string[];
   onToggleSelect: (id: string) => void;
   onOpenBook: (book: Book) => void;
+  onEditBook: (book: Book) => void;
+  onDeleteBook: (book: Book) => void;
   columnVisibility: VisibilityState;
   onColumnVisibilityChange: (value: Updater<VisibilityState>) => void;
 };
@@ -24,8 +25,6 @@ type Props = {
 const columnHelper = createColumnHelper<Book>();
 
 export function TableView(props: Props) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-
   const columns = useMemo(
     () => [
       columnHelper.display({
@@ -90,8 +89,38 @@ export function TableView(props: Props) {
         size: 150,
         cell: (ctx) => new Date(ctx.getValue()).toLocaleDateString(),
       }),
+      columnHelper.display({
+        id: "actions",
+        header: "Actions",
+        size: 120,
+        cell: (ctx) => (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="rounded p-1 hover:bg-stone-200 dark:hover:bg-stone-800"
+              onClick={() => props.onEditBook(ctx.row.original)}
+              aria-label={`Edit ${ctx.row.original.title}`}
+            >
+              <Pencil size={14} className="text-stone-500" />
+            </button>
+            <button
+              type="button"
+              className="rounded p-1 hover:bg-stone-200 dark:hover:bg-stone-800"
+              onClick={() => props.onDeleteBook(ctx.row.original)}
+              aria-label={`Delete ${ctx.row.original.title}`}
+            >
+              <Trash2 size={14} className="text-stone-500" />
+            </button>
+          </div>
+        ),
+      }),
     ],
-    [props.selectedIds, props.onToggleSelect],
+    [
+      props.selectedIds,
+      props.onDeleteBook,
+      props.onEditBook,
+      props.onToggleSelect,
+    ],
   );
 
   const table = useReactTable({
@@ -107,13 +136,6 @@ export function TableView(props: Props) {
   });
 
   const rows = table.getRowModel().rows;
-
-  const rowVirtualizer = useVirtualizer({
-    count: rows.length,
-    getScrollElement: () => containerRef.current,
-    estimateSize: () => 46,
-    overscan: 12,
-  });
 
   return (
     <div className="flex h-full min-h-0 flex-col px-3 pb-3 pt-2 sm:px-4">
@@ -136,11 +158,8 @@ export function TableView(props: Props) {
           ))}
       </div>
 
-      <div
-        ref={containerRef}
-        className="min-h-0 flex-1 overflow-auto rounded-xl border border-stone-200 dark:border-stone-800"
-      >
-        <table className="w-full border-collapse text-sm">
+      <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-stone-200 dark:border-stone-800">
+        <table className="w-full table-fixed border-collapse text-sm">
           <thead className="sticky top-0 z-20 bg-stone-100 dark:bg-stone-900">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
@@ -161,37 +180,24 @@ export function TableView(props: Props) {
               </tr>
             ))}
           </thead>
-          <tbody
-            style={{
-              height: rowVirtualizer.getTotalSize(),
-              position: "relative",
-            }}
-          >
-            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-              const row = rows[virtualRow.index];
-              if (!row) return null;
-
-              return (
-                <tr
-                  key={row.id}
-                  className="absolute left-0 right-0 border-b border-stone-100 hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"
-                  style={{ transform: `translateY(${virtualRow.start}px)` }}
-                  onDoubleClick={() => props.onOpenBook(row.original)}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td
-                      key={cell.id}
-                      className="px-2 py-2 align-middle text-stone-700 dark:text-stone-200"
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              );
-            })}
+          <tbody>
+            {rows.map((row) => (
+              <tr
+                key={row.id}
+                className="border-b border-stone-100 hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"
+                onDoubleClick={() => props.onOpenBook(row.original)}
+              >
+                {row.getVisibleCells().map((cell) => (
+                  <td
+                    key={cell.id}
+                    style={{ width: cell.column.getSize() }}
+                    className="px-2 py-2 align-middle text-stone-700 dark:text-stone-200"
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
