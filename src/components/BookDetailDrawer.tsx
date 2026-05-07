@@ -10,6 +10,13 @@ type Props = {
 };
 
 export function BookDetailDrawer({ book, onClose, onEdit, onDelete }: Props) {
+  const hasPublisher = Boolean(book?.publisher?.trim());
+  const hasPublishedYear = typeof book?.publishedYear === "number";
+  const hasIsbn = Boolean(book?.isbn?.trim());
+  const hasCategories = Boolean(book?.categories?.length);
+  const hasTags = Boolean(book?.tags?.length);
+  const hasRating = typeof book?.rating === "number";
+
   return (
     <AnimatePresence>
       {book ? (
@@ -55,11 +62,7 @@ export function BookDetailDrawer({ book, onClose, onEdit, onDelete }: Props) {
                 className="mb-4 aspect-[3/4] w-full rounded-xl object-cover"
                 loading="lazy"
               />
-            ) : (
-              <div className="mb-4 flex aspect-[3/4] w-full items-center justify-center rounded-xl bg-stone-200 text-sm text-stone-500 dark:bg-stone-800 dark:text-stone-400">
-                No cover image
-              </div>
-            )}
+            ) : null}
 
             {book.additionalImages?.length ? (
               <div className="mb-4 grid grid-cols-3 gap-2">
@@ -116,19 +119,78 @@ export function BookDetailDrawer({ book, onClose, onEdit, onDelete }: Props) {
                 </dd>
               </div>
               <div>
-                <dt className="text-stone-500 dark:text-stone-400">
-                  Publisher
-                </dt>
+                <dt className="text-stone-500 dark:text-stone-400">Donate</dt>
                 <dd className="text-stone-900 dark:text-stone-100">
-                  {book.publisher || "-"}
+                  {book.readyToDonate ? "Yes" : "No"}
                 </dd>
               </div>
-              <div>
-                <dt className="text-stone-500 dark:text-stone-400">Year</dt>
-                <dd className="text-stone-900 dark:text-stone-100">
-                  {book.publishedYear || "-"}
-                </dd>
-              </div>
+              {hasRating ? (
+                <div>
+                  <dt className="text-stone-500 dark:text-stone-400">Rating</dt>
+                  <dd className="inline-flex items-center gap-1 text-stone-900 dark:text-stone-100">
+                    <Star size={14} className="fill-amber-400 text-amber-500" />
+                    {book.rating}/5
+                  </dd>
+                </div>
+              ) : null}
+              {hasPublisher ? (
+                <div>
+                  <dt className="text-stone-500 dark:text-stone-400">
+                    Publisher
+                  </dt>
+                  <dd className="text-stone-900 dark:text-stone-100">
+                    {book.publisher}
+                  </dd>
+                </div>
+              ) : null}
+              {hasPublishedYear ? (
+                <div>
+                  <dt className="text-stone-500 dark:text-stone-400">Year</dt>
+                  <dd className="text-stone-900 dark:text-stone-100">
+                    {book.publishedYear}
+                  </dd>
+                </div>
+              ) : null}
+              {hasIsbn ? (
+                <div className="col-span-2">
+                  <dt className="text-stone-500 dark:text-stone-400">ISBN</dt>
+                  <dd className="break-all text-stone-900 dark:text-stone-100">
+                    {book.isbn}
+                  </dd>
+                </div>
+              ) : null}
+              {hasCategories ? (
+                <div className="col-span-2">
+                  <dt className="text-stone-500 dark:text-stone-400">
+                    Categories
+                  </dt>
+                  <dd className="mt-1 flex flex-wrap gap-1">
+                    {book.categories?.map((category) => (
+                      <span
+                        key={category}
+                        className="rounded-full bg-stone-200 px-2 py-0.5 text-xs text-stone-700 dark:bg-stone-800 dark:text-stone-300"
+                      >
+                        {category}
+                      </span>
+                    ))}
+                  </dd>
+                </div>
+              ) : null}
+              {hasTags ? (
+                <div className="col-span-2">
+                  <dt className="text-stone-500 dark:text-stone-400">Tags</dt>
+                  <dd className="mt-1 flex flex-wrap gap-1">
+                    {book.tags?.map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full bg-stone-200 px-2 py-0.5 text-xs text-stone-700 dark:bg-stone-800 dark:text-stone-300"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </dd>
+                </div>
+              ) : null}
             </dl>
 
             {book.notes ? (
