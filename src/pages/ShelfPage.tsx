@@ -124,6 +124,26 @@ export function ShelfPage() {
     }, 3600);
   };
 
+  const cycleStatus = async (book: Book) => {
+    const nextStatus: ReadingStatus =
+      book.status === "reading"
+        ? "completed"
+        : book.status === "completed"
+          ? "unread"
+          : "reading";
+
+    await updateBook(book.id, { status: nextStatus });
+
+    const label =
+      nextStatus === "completed"
+        ? "read"
+        : nextStatus === "reading"
+          ? "reading"
+          : "unread";
+
+    addToast({ message: `${book.title} marked ${label}` });
+  };
+
   const handleSave = async (payload: BookDraft) => {
     if (editingBook) {
       await updateBook(editingBook.id, payload);
@@ -318,6 +338,9 @@ export function ShelfPage() {
                     readyToDonate: !book.readyToDonate,
                   });
                   addToast({ message: `${book.title} donate flag updated` });
+                }}
+                onCycleStatus={(book) => {
+                  void cycleStatus(book);
                 }}
                 onEditBook={startEditing}
                 onDeleteBook={(book) => {
