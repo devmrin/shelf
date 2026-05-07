@@ -107,7 +107,7 @@ export function GalleryView({
                   <p className="line-clamp-3 pl-2 pr-1 text-[11px] font-semibold leading-tight text-stone-800 dark:text-stone-100">
                     {book.title}
                   </p>
-                  <p className="truncate pl-2 pr-1 text-[10px] text-stone-600 dark:text-stone-300">
+                  <p className="overflow-hidden pl-2 pr-1 text-[10px] leading-tight text-stone-600 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] dark:text-stone-300">
                     {book.author || "Unknown author"}
                   </p>
                 </div>
@@ -118,7 +118,7 @@ export function GalleryView({
                     <h3 className="truncate text-sm font-medium text-stone-900 dark:text-stone-100">
                       {book.title}
                     </h3>
-                    <p className="truncate text-xs text-stone-600 dark:text-stone-300">
+                    <p className="overflow-hidden text-xs leading-tight text-stone-600 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] dark:text-stone-300">
                       {book.author || "Unknown author"}
                     </p>
                   </div>

@@ -19,7 +19,6 @@ import {
   addBook,
   bulkEditBooks,
   collectionStats,
-  estimateStorage,
   exportJson,
   importJson,
   queryBooks,
@@ -55,7 +54,6 @@ export function ShelfPage() {
   const [editingBook, setEditingBook] = useState<Book | undefined>();
   const [contextBook, setContextBook] = useState<Book | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const [storage, setStorage] = useState({ used: 0, quota: 0, percent: 0 });
 
   const debouncedSearch = useDebouncedValue(search, 180);
   const isMobile = useMediaQuery("(max-width: 1023px)");
@@ -101,10 +99,6 @@ export function ShelfPage() {
   useEffect(() => {
     void seedSampleData();
   }, []);
-
-  useEffect(() => {
-    void estimateStorage().then(setStorage);
-  }, [books.length]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -262,23 +256,6 @@ export function ShelfPage() {
               editingBook={editingBook}
               onCancelEdit={() => setEditingBook(undefined)}
               stats={stats}
-              quickFilters={quickFilters}
-              onToggleQuickFilter={toggleQuickFilter}
-              onExport={() => void handleExport()}
-              onImport={handleImport}
-              onBulkDelete={deleteSelected}
-              onBulkFavorite={() =>
-                bulkEditBooks(selectedIds, { favorite: true })
-              }
-              onBulkDonate={() => bulkEditBooks(selectedIds, { donate: true })}
-              onBulkAddCategory={(value) =>
-                bulkEditBooks(selectedIds, { addCategory: value })
-              }
-              onBulkAddTag={(value) =>
-                bulkEditBooks(selectedIds, { addTag: value })
-              }
-              selectedCount={selectedIds.length}
-              storageUsage={storage}
             />
           </div>
         ) : null}
@@ -293,6 +270,10 @@ export function ShelfPage() {
             onSortModeChange={setSortMode}
             theme={darkMode}
             onThemeChange={setDarkMode}
+            quickFilters={quickFilters}
+            onToggleQuickFilter={toggleQuickFilter}
+            onExport={() => void handleExport()}
+            onImport={handleImport}
           />
 
           <div className="min-h-0 flex-1">
@@ -361,6 +342,19 @@ export function ShelfPage() {
                 onDeleteBook={(book) => {
                   void deleteOne(book);
                 }}
+                onBulkDelete={deleteSelected}
+                onBulkFavorite={() =>
+                  bulkEditBooks(selectedIds, { favorite: true })
+                }
+                onBulkDonate={() =>
+                  bulkEditBooks(selectedIds, { donate: true })
+                }
+                onBulkAddCategory={(value) =>
+                  bulkEditBooks(selectedIds, { addCategory: value })
+                }
+                onBulkAddTag={(value) =>
+                  bulkEditBooks(selectedIds, { addTag: value })
+                }
                 columnVisibility={columnVisibility}
                 onColumnVisibilityChange={(value) => {
                   if (typeof value === "function") {
@@ -401,25 +395,6 @@ export function ShelfPage() {
                 editingBook={editingBook}
                 onCancelEdit={() => setEditingBook(undefined)}
                 stats={stats}
-                quickFilters={quickFilters}
-                onToggleQuickFilter={toggleQuickFilter}
-                onExport={() => void handleExport()}
-                onImport={handleImport}
-                onBulkDelete={deleteSelected}
-                onBulkFavorite={() =>
-                  bulkEditBooks(selectedIds, { favorite: true })
-                }
-                onBulkDonate={() =>
-                  bulkEditBooks(selectedIds, { donate: true })
-                }
-                onBulkAddCategory={(value) =>
-                  bulkEditBooks(selectedIds, { addCategory: value })
-                }
-                onBulkAddTag={(value) =>
-                  bulkEditBooks(selectedIds, { addTag: value })
-                }
-                selectedCount={selectedIds.length}
-                storageUsage={storage}
               />
             </motion.div>
           </>

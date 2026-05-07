@@ -1,5 +1,14 @@
-import { LayoutGrid, Table2, Search, Moon, Sun, Laptop2 } from "lucide-react";
-import type { SortMode, ViewMode } from "../features/books/types";
+import {
+  LayoutGrid,
+  Table2,
+  Search,
+  Moon,
+  Sun,
+  Laptop2,
+  Download,
+  Upload,
+} from "lucide-react";
+import type { QuickFilter, SortMode, ViewMode } from "../features/books/types";
 
 type Props = {
   search: string;
@@ -10,7 +19,21 @@ type Props = {
   onSortModeChange: (mode: SortMode) => void;
   theme: "light" | "dark" | "system";
   onThemeChange: (mode: "light" | "dark" | "system") => void;
+  quickFilters: QuickFilter[];
+  onToggleQuickFilter: (value: QuickFilter) => void;
+  onExport: () => void;
+  onImport: (file: File) => Promise<void>;
 };
+
+const QUICK_FILTERS: QuickFilter[] = [
+  "favorites",
+  "donate",
+  "unread",
+  "reading",
+  "completed",
+  "has-image",
+  "missing-metadata",
+];
 
 export function TopToolbar(props: Props) {
   return (
@@ -90,6 +113,53 @@ export function TopToolbar(props: Props) {
           >
             <Laptop2 size={14} />
           </button>
+        </div>
+      </div>
+
+      <div className="mt-2 flex items-center justify-between gap-2">
+        <div className="flex flex-1 flex-wrap gap-2">
+          {QUICK_FILTERS.map((filter) => {
+            const active = props.quickFilters.includes(filter);
+            return (
+              <button
+                key={filter}
+                type="button"
+                className={`rounded-full px-2 py-1 text-xs ${active ? "bg-stone-800 text-stone-100 dark:bg-stone-100 dark:text-stone-900" : "bg-stone-200 text-stone-700 dark:bg-stone-800 dark:text-stone-200"}`}
+                onClick={() => props.onToggleQuickFilter(filter)}
+              >
+                {filter}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="inline-flex shrink-0 items-center rounded-lg border border-stone-300 bg-stone-50 p-1 dark:border-stone-700 dark:bg-stone-900">
+          <button
+            type="button"
+            onClick={props.onExport}
+            className="rounded-md p-1 hover:bg-stone-200 dark:hover:bg-stone-800"
+            aria-label="Export JSON"
+            title="Export JSON"
+          >
+            <Download size={14} />
+          </button>
+          <label
+            className="cursor-pointer rounded-md p-1 hover:bg-stone-200 dark:hover:bg-stone-800"
+            aria-label="Import JSON"
+            title="Import JSON"
+          >
+            <Upload size={14} />
+            <input
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void props.onImport(file);
+                event.target.value = "";
+              }}
+            />
+          </label>
         </div>
       </div>
     </header>

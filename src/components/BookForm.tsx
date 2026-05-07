@@ -24,7 +24,7 @@ type FormValues = {
   authors: string[];
   isbn: string;
   publisher: string;
-  publishedYear?: number;
+  publishedYear: string;
   categories: string[];
   tags: string[];
   notes: string;
@@ -47,7 +47,8 @@ function toFormValues(book?: Book): FormValues {
     authors: authorList.length ? authorList : [""],
     isbn: book?.isbn ?? "",
     publisher: book?.publisher ?? "",
-    publishedYear: book?.publishedYear,
+    publishedYear:
+      typeof book?.publishedYear === "number" ? String(book.publishedYear) : "",
     categories: book?.categories ?? [],
     tags: book?.tags ?? [],
     notes: book?.notes ?? "",
@@ -148,8 +149,10 @@ export function BookForm(props: Props) {
             typeof parsed.publisher === "string" ? parsed.publisher : "",
           publishedYear:
             typeof parsed.publishedYear === "number"
-              ? parsed.publishedYear
-              : undefined,
+              ? String(parsed.publishedYear)
+              : typeof parsed.publishedYear === "string"
+                ? parsed.publishedYear
+                : "",
           categories: parsedCategories,
           tags: parsedTags,
           notes: typeof parsed.notes === "string" ? parsed.notes : "",
@@ -242,10 +245,11 @@ export function BookForm(props: Props) {
     if (!canSave || saving) return;
     setSaving(true);
     try {
+      const trimmedPublishedYear = values.publishedYear.trim();
+      const parsedPublishedYear = Number(trimmedPublishedYear);
       const normalizedPublishedYear =
-        typeof values.publishedYear === "number" &&
-        Number.isFinite(values.publishedYear)
-          ? values.publishedYear
+        trimmedPublishedYear.length > 0 && Number.isFinite(parsedPublishedYear)
+          ? parsedPublishedYear
           : undefined;
 
       const payload: BookDraft = {
@@ -265,7 +269,6 @@ export function BookForm(props: Props) {
       await props.onSave(payload);
 
       reset(toFormValues());
-      setValue("publishedYear", undefined);
       setDuplicates([]);
       setCoverImage(undefined);
       setAdditionalImages([]);
@@ -425,19 +428,11 @@ export function BookForm(props: Props) {
             placeholder="Publisher"
           />
           <input
-            {...register("publishedYear", {
-              setValueAs: (value) => {
-                if (value === "" || value === null || value === undefined) {
-                  return undefined;
-                }
-
-                const parsed = Number(value);
-                return Number.isFinite(parsed) ? parsed : undefined;
-              },
-            })}
+            {...register("publishedYear")}
             className="h-8 rounded-md border border-stone-300 bg-white px-2 text-xs dark:border-stone-700 dark:bg-stone-950"
             placeholder="Year"
-            type="number"
+            type="text"
+            inputMode="numeric"
           />
           <select
             {...register("status")}

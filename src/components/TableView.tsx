@@ -18,6 +18,11 @@ type Props = {
   onOpenBook: (book: Book) => void;
   onEditBook: (book: Book) => void;
   onDeleteBook: (book: Book) => void;
+  onBulkDelete: () => Promise<void>;
+  onBulkFavorite: () => Promise<void>;
+  onBulkDonate: () => Promise<void>;
+  onBulkAddCategory: (value: string) => Promise<void>;
+  onBulkAddTag: (value: string) => Promise<void>;
   columnVisibility: VisibilityState;
   onColumnVisibilityChange: (value: Updater<VisibilityState>) => void;
 };
@@ -136,26 +141,89 @@ export function TableView(props: Props) {
   });
 
   const rows = table.getRowModel().rows;
+  const selectedCount = props.selectedIds.length;
 
   return (
     <div className="flex h-full min-h-0 flex-col px-3 pb-3 pt-2 sm:px-4">
-      <div className="mb-2 flex flex-wrap gap-2">
-        {table
-          .getAllLeafColumns()
-          .filter((column) => column.id !== "select")
-          .map((column) => (
-            <label
-              key={column.id}
-              className="inline-flex items-center gap-1 text-xs"
-            >
-              <input
-                type="checkbox"
-                checked={column.getIsVisible()}
-                onChange={column.getToggleVisibilityHandler()}
-              />
-              {column.id}
-            </label>
-          ))}
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <details className="group relative">
+          <summary className="cursor-pointer list-none rounded-md border border-stone-300 bg-stone-50 px-3 py-1.5 text-xs font-medium hover:bg-stone-100 dark:border-stone-700 dark:bg-stone-900 dark:hover:bg-stone-800">
+            Visibility
+          </summary>
+          <div className="absolute left-0 top-full z-30 mt-1 min-w-44 rounded-lg border border-stone-200 bg-stone-50 p-2 shadow-lg dark:border-stone-700 dark:bg-stone-900">
+            <div className="flex flex-col gap-1">
+              {table
+                .getAllLeafColumns()
+                .filter((column) => column.id !== "select")
+                .map((column) => (
+                  <label
+                    key={column.id}
+                    className="inline-flex items-center gap-2 text-xs"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={column.getIsVisible()}
+                      onChange={column.getToggleVisibilityHandler()}
+                    />
+                    <span className="capitalize">{column.id}</span>
+                  </label>
+                ))}
+            </div>
+          </div>
+        </details>
+
+        {selectedCount > 0 ? (
+          <section className="rounded-lg border border-stone-200 bg-stone-50 p-2 text-xs dark:border-stone-700 dark:bg-stone-900">
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-600 dark:text-stone-300">
+              Bulk Actions ({selectedCount})
+            </h3>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+              <button
+                className="rounded-md border border-stone-300 px-2 py-1 hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
+                type="button"
+                onClick={() => void props.onBulkFavorite()}
+              >
+                Favorite
+              </button>
+              <button
+                className="rounded-md border border-stone-300 px-2 py-1 hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
+                type="button"
+                onClick={() => void props.onBulkDonate()}
+              >
+                Donate
+              </button>
+              <button
+                className="rounded-md border border-stone-300 px-2 py-1 hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
+                type="button"
+                onClick={() => void props.onBulkDelete()}
+              >
+                Trash
+              </button>
+              <button
+                className="rounded-md border border-stone-300 px-2 py-1 hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
+                type="button"
+                onClick={() => {
+                  const value = window.prompt(
+                    "Category to add to selected books",
+                  );
+                  if (value) void props.onBulkAddCategory(value);
+                }}
+              >
+                Add Category
+              </button>
+              <button
+                className="rounded-md border border-stone-300 px-2 py-1 hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
+                type="button"
+                onClick={() => {
+                  const value = window.prompt("Tag to add to selected books");
+                  if (value) void props.onBulkAddTag(value);
+                }}
+              >
+                Add Tag
+              </button>
+            </div>
+          </section>
+        ) : null}
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-stone-200 dark:border-stone-800">
