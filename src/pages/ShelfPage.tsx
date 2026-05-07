@@ -248,7 +248,7 @@ export function ShelfPage() {
 
   return (
     <div className="h-screen overflow-hidden bg-[radial-gradient(circle_at_10%_20%,rgba(231,229,228,0.5),transparent_45%),radial-gradient(circle_at_100%_0%,rgba(214,211,209,0.3),transparent_28%)] text-stone-800 dark:bg-[radial-gradient(circle_at_10%_20%,rgba(28,25,23,0.6),transparent_45%),radial-gradient(circle_at_100%_0%,rgba(41,37,36,0.6),transparent_28%)] dark:text-stone-100">
-      <div className="mx-auto flex h-full max-w-[1600px]">
+      <div className="flex h-full w-full">
         {!isMobile ? (
           <div className="w-[320px] shrink-0">
             <Sidebar
