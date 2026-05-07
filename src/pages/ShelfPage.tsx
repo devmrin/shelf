@@ -181,7 +181,11 @@ export function ShelfPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `shelf-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    const timestamp = new Date()
+      .toISOString()
+      .replace("T", "_")
+      .replace(/[:.]/g, "-");
+    a.download = `shelf-backup-${timestamp}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
