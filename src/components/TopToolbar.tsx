@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import type { QuickFilter, SortMode, ViewMode } from "../features/books/types";
+import { SingleSelect } from "./SingleSelect";
 
 type Props = {
   search: string;
@@ -55,21 +56,20 @@ export function TopToolbar(props: Props) {
             />
           </label>
 
-          <select
-            className="h-9 rounded-lg border border-stone-300 bg-stone-50 px-2 text-sm dark:border-stone-700 dark:bg-stone-900"
+          <SingleSelect
             value={props.sortMode}
-            onChange={(event) =>
-              props.onSortModeChange(event.target.value as SortMode)
-            }
-            aria-label="Sort books"
-          >
-            <option value="created-desc">Recently Added</option>
-            <option value="updated-desc">Recently Updated</option>
-            <option value="title-asc">Title A-Z</option>
-            <option value="author-asc">Author A-Z</option>
-            <option value="rating-desc">Rating</option>
-            <option value="favorites-first">Favorites First</option>
-          </select>
+            onValueChange={(value) => props.onSortModeChange(value as SortMode)}
+            ariaLabel="Sort books"
+            triggerClassName="flex h-9 w-[12rem] items-center justify-between rounded-lg border border-stone-300 bg-stone-50 px-2 text-left text-sm text-stone-900 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100"
+            options={[
+              { value: "created-desc", label: "Recently Added" },
+              { value: "updated-desc", label: "Recently Updated" },
+              { value: "title-asc", label: "Title A-Z" },
+              { value: "author-asc", label: "Author A-Z" },
+              { value: "rating-desc", label: "Rating" },
+              { value: "favorites-first", label: "Favorites First" },
+            ]}
+          />
 
           <div className="inline-flex rounded-lg border border-stone-300 bg-stone-50 p-1 dark:border-stone-700 dark:bg-stone-900">
             <Tooltip.Root>

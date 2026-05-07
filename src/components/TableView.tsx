@@ -10,6 +10,7 @@ import {
 } from "@tanstack/react-table";
 import { Heart, Pencil, Trash2 } from "lucide-react";
 import type { Book } from "../features/books/types";
+import { RadixCheckbox } from "./RadixCheckbox";
 
 type Props = {
   books: Book[];
@@ -37,10 +38,9 @@ export function TableView(props: Props) {
         header: () => <span className="text-xs">Pick</span>,
         size: 42,
         cell: (ctx) => (
-          <input
-            type="checkbox"
+          <RadixCheckbox
             checked={props.selectedIds.includes(ctx.row.original.id)}
-            onChange={() => props.onToggleSelect(ctx.row.original.id)}
+            onCheckedChange={() => props.onToggleSelect(ctx.row.original.id)}
             aria-label={`Select ${ctx.row.original.title}`}
           />
         ),
@@ -160,10 +160,10 @@ export function TableView(props: Props) {
                     key={column.id}
                     className="inline-flex items-center gap-2 text-xs"
                   >
-                    <input
-                      type="checkbox"
+                    <RadixCheckbox
                       checked={column.getIsVisible()}
-                      onChange={column.getToggleVisibilityHandler()}
+                      onCheckedChange={() => column.toggleVisibility()}
+                      ariaLabel={`Toggle ${column.id} column`}
                     />
                     <span className="capitalize">{column.id}</span>
                   </label>

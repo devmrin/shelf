@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useLiveQuery } from "dexie-react-hooks";
-import { Plus, Star, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus, Star, X } from "lucide-react";
 import type { Book, BookDraft } from "../features/books/types";
 import {
   detectDuplicates,
@@ -12,6 +12,8 @@ import {
 } from "../features/books/repository";
 import { filesFromClipboard, optimizeImage } from "../utils/image";
 import { MultiValueSelect } from "./MultiValueSelect";
+import { RadixCheckbox } from "./RadixCheckbox";
+import { SingleSelect } from "./SingleSelect";
 
 type Props = {
   onSave: (data: BookDraft) => Promise<void>;
@@ -71,7 +73,7 @@ export function BookForm(props: Props) {
   const [duplicates, setDuplicates] = useState<
     { id: string; title: string; author?: string }[]
   >([]);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const coverInputId = "book-cover-upload";
 
   const { register, handleSubmit, watch, reset, setValue } =
     useForm<FormValues>({
@@ -88,6 +90,9 @@ export function BookForm(props: Props) {
   const categories = watch("categories") ?? [];
   const tags = watch("tags") ?? [];
   const rating = watch("rating");
+  const status = watch("status");
+  const isFavorite = watch("isFavorite");
+  const readyToDonate = watch("readyToDonate");
   const author = authors
     .map((entry) => entry.trim())
     .filter(Boolean)
@@ -360,38 +365,28 @@ export function BookForm(props: Props) {
       <button
         type="button"
         onClick={() => setShowMore((value) => !value)}
-        className="text-xs text-stone-600 hover:text-stone-900 dark:text-stone-300 dark:hover:text-stone-100"
+        className="inline-flex items-center gap-1 text-xs text-stone-600 hover:text-stone-900 dark:text-stone-300 dark:hover:text-stone-100"
       >
+        {showMore ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         {showMore ? "Hide details" : "More details"}
       </button>
 
       {showMore && (
         <div className="grid grid-cols-2 gap-2">
-          <div className="col-span-2 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="h-8 rounded-md border border-stone-300 px-2 text-xs hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
+          <div className="col-span-2">
+            <label
+              htmlFor={coverInputId}
+              className="inline-flex h-8 cursor-pointer items-center rounded-md border border-stone-300 px-2 text-xs hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
             >
-              Upload Cover
-            </button>
+              Upload cover
+            </label>
             <input
-              ref={fileInputRef}
+              id={coverInputId}
               type="file"
               accept="image/*"
               capture="environment"
-              className="hidden"
-              onChange={(event) => {
-                const files = Array.from(event.target.files ?? []);
-                if (files.length) void addImageFiles(files);
-                event.target.value = "";
-              }}
-            />
-            <input
-              type="file"
-              accept="image/*"
               multiple
-              className="text-xs"
+              className="hidden"
               onChange={(event) => {
                 const files = Array.from(event.target.files ?? []);
                 if (files.length) void addImageFiles(files);
@@ -434,14 +429,20 @@ export function BookForm(props: Props) {
             type="text"
             inputMode="numeric"
           />
-          <select
-            {...register("status")}
-            className="h-8 rounded-md border border-stone-300 bg-white px-2 text-xs dark:border-stone-700 dark:bg-stone-950"
-          >
-            <option value="unread">Unread</option>
-            <option value="reading">Reading</option>
-            <option value="completed">Completed</option>
-          </select>
+          <SingleSelect
+            value={status}
+            onValueChange={(value) =>
+              setValue("status", value as FormValues["status"], {
+                shouldDirty: true,
+              })
+            }
+            ariaLabel="Reading status"
+            options={[
+              { value: "unread", label: "Unread" },
+              { value: "reading", label: "Reading" },
+              { value: "completed", label: "Completed" },
+            ]}
+          />
           <div className="col-span-2">
             <MultiValueSelect
               values={categories}
@@ -499,10 +500,24 @@ export function BookForm(props: Props) {
           </div>
           <div className="col-span-2 flex items-center gap-3 text-xs">
             <label className="flex items-center gap-1 text-xs">
-              <input type="checkbox" {...register("isFavorite")} /> Favorite
+              <RadixCheckbox
+                checked={isFavorite}
+                onCheckedChange={(checked) =>
+                  setValue("isFavorite", checked, { shouldDirty: true })
+                }
+                ariaLabel="Favorite"
+              />
+              Favorite
             </label>
             <label className="flex items-center gap-1 text-xs">
-              <input type="checkbox" {...register("readyToDonate")} /> Donate
+              <RadixCheckbox
+                checked={readyToDonate}
+                onCheckedChange={(checked) =>
+                  setValue("readyToDonate", checked, { shouldDirty: true })
+                }
+                ariaLabel="Ready to donate"
+              />
+              Donate
             </label>
           </div>
         </div>
