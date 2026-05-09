@@ -99,40 +99,6 @@ function sortBooks(books: Book[], sort: SortMode) {
   return cloned
 }
 
-export async function seedSampleData() {
-  const count = await db.books.count()
-  if (count > 0) return
-
-  const now = Date.now()
-  await db.books.bulkPut([
-    {
-      id: createId('book'),
-      title: 'The Left Hand of Darkness',
-      author: 'Ursula K. Le Guin',
-      categories: ['Science Fiction'],
-      tags: ['classic', 'winter'],
-      isFavorite: true,
-      readyToDonate: false,
-      status: 'completed',
-      rating: 5,
-      createdAt: now - 86400000 * 8,
-      updatedAt: now - 86400000 * 2,
-    },
-    {
-      id: createId('book'),
-      title: 'Thinking, Fast and Slow',
-      author: 'Daniel Kahneman',
-      categories: ['Psychology'],
-      tags: ['non-fiction'],
-      isFavorite: false,
-      readyToDonate: false,
-      status: 'reading',
-      createdAt: now - 86400000 * 5,
-      updatedAt: now - 86400000,
-    },
-  ])
-}
-
 export async function addBook(input: BookDraft) {
   const now = Date.now()
   const book: Book = {
@@ -203,6 +169,14 @@ export async function getSetting(key: string) {
 
 export async function getAllBooks() {
   return db.books.orderBy('updatedAt').reverse().toArray()
+}
+
+export async function getTrashedBooks() {
+  const books = await db.books
+    .filter((book) => Boolean(book.deletedAt))
+    .toArray()
+
+  return books.sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0))
 }
 
 export async function queryBooks(params: {

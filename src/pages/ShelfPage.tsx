@@ -8,6 +8,7 @@ import { GalleryView } from "../components/GalleryView";
 import { TableView } from "../components/TableView";
 import { BookDetailDrawer } from "../components/BookDetailDrawer";
 import { EmptyState } from "../components/EmptyState";
+import { TrashDialog } from "../components/TrashDialog";
 import { ToastStack, type ToastItem } from "../components/ToastStack";
 import type {
   Book,
@@ -20,10 +21,11 @@ import {
   bulkEditBooks,
   collectionStats,
   exportJson,
+  getTrashedBooks,
   importJson,
+  permanentlyDeleteBooks,
   queryBooks,
   restoreBooks,
-  seedSampleData,
   softDeleteBooks,
   updateBook,
 } from "../features/books/repository";
@@ -54,6 +56,7 @@ export function ShelfPage() {
   const [editingBook, setEditingBook] = useState<Book | undefined>();
   const [contextBook, setContextBook] = useState<Book | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [trashOpen, setTrashOpen] = useState(false);
 
   const debouncedSearch = useDebouncedValue(search, 180);
   const isMobile = useMediaQuery("(max-width: 1023px)");
@@ -96,9 +99,7 @@ export function ShelfPage() {
     completed: 0,
   }) ?? { total: 0, favorites: 0, donation: 0, reading: 0, completed: 0 };
 
-  useEffect(() => {
-    void seedSampleData();
-  }, []);
+  const trashedBooks = useLiveQuery(() => getTrashedBooks(), [], []) ?? [];
 
   useEffect(() => {
     const root = document.documentElement;
@@ -211,6 +212,50 @@ export function ShelfPage() {
     });
   };
 
+  const handleRestoreFromTrash = async (book: Book) => {
+    await restoreBooks([book.id]);
+    addToast({ message: `${book.title} restored` });
+  };
+
+  const handlePermanentlyDeleteFromTrash = async (book: Book) => {
+    const confirmed = window.confirm(
+      `Permanently delete \"${book.title}\"? This cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    await permanentlyDeleteBooks([book.id]);
+
+    if (activeBook?.id === book.id) setActiveBook(undefined);
+    if (contextBook?.id === book.id) setContextBook(null);
+    if (editingBook?.id === book.id) setEditingBook(undefined);
+
+    addToast({ message: `${book.title} permanently deleted` });
+  };
+
+  const handleRestoreAllFromTrash = async () => {
+    if (!trashedBooks.length) return;
+    const ids = trashedBooks.map((book) => book.id);
+    await restoreBooks(ids);
+    addToast({ message: `${ids.length} books restored` });
+  };
+
+  const handlePermanentlyDeleteAllFromTrash = async () => {
+    if (!trashedBooks.length) return;
+    const confirmed = window.confirm(
+      `Permanently delete ${trashedBooks.length} trashed books? This cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    const ids = trashedBooks.map((book) => book.id);
+    await permanentlyDeleteBooks(ids);
+
+    if (activeBook && ids.includes(activeBook.id)) setActiveBook(undefined);
+    if (contextBook && ids.includes(contextBook.id)) setContextBook(null);
+    if (editingBook && ids.includes(editingBook.id)) setEditingBook(undefined);
+
+    addToast({ message: `${ids.length} books permanently deleted` });
+  };
+
   const quickFilterEmptyState = useMemo(() => {
     if (!quickFilters.length) return null;
     if (quickFilters.includes("favorites")) return "No favorite books yet.";
@@ -278,6 +323,8 @@ export function ShelfPage() {
             onToggleQuickFilter={toggleQuickFilter}
             onExport={() => void handleExport()}
             onImport={handleImport}
+            trashedCount={trashedBooks.length}
+            onOpenTrash={() => setTrashOpen(true)}
           />
 
           <div className="min-h-0 flex-1">
@@ -474,6 +521,23 @@ export function ShelfPage() {
         }}
         onDelete={(book) => {
           void deleteOne(book);
+        }}
+      />
+      <TrashDialog
+        open={trashOpen}
+        onOpenChange={setTrashOpen}
+        books={trashedBooks}
+        onRestoreBook={(book) => {
+          void handleRestoreFromTrash(book);
+        }}
+        onDeleteBookForever={(book) => {
+          void handlePermanentlyDeleteFromTrash(book);
+        }}
+        onRestoreAll={() => {
+          void handleRestoreAllFromTrash();
+        }}
+        onDeleteAllForever={() => {
+          void handlePermanentlyDeleteAllFromTrash();
         }}
       />
       <ToastStack

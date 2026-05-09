@@ -7,6 +7,7 @@ import {
   Laptop2,
   Download,
   Upload,
+  Trash2,
 } from "lucide-react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import type { QuickFilter, SortMode, ViewMode } from "../features/books/types";
@@ -25,6 +26,8 @@ type Props = {
   onToggleQuickFilter: (value: QuickFilter) => void;
   onExport: () => void;
   onImport: (file: File) => Promise<void>;
+  trashedCount: number;
+  onOpenTrash: () => void;
 };
 
 const QUICK_FILTERS: QuickFilter[] = [
@@ -144,6 +147,27 @@ export function TopToolbar(props: Props) {
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
+            <div className="inline-flex items-center rounded-lg border border-stone-300 bg-stone-50 p-1 dark:border-stone-700 dark:bg-stone-900">
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild>
+                  <button
+                    type="button"
+                    onClick={props.onOpenTrash}
+                    className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs hover:bg-stone-200 dark:hover:bg-stone-800"
+                    aria-label="Open trash"
+                  >
+                    <Trash2 size={14} />
+                    <span>({props.trashedCount})</span>
+                  </button>
+                </Tooltip.Trigger>
+                <Tooltip.Portal>
+                  <Tooltip.Content className="z-[100] rounded-md bg-stone-900 px-2 py-1 text-xs text-stone-50 shadow dark:bg-stone-100 dark:text-stone-900">
+                    Trash ({props.trashedCount})
+                  </Tooltip.Content>
+                </Tooltip.Portal>
+              </Tooltip.Root>
+            </div>
+
             <div className="inline-flex items-center rounded-lg border border-stone-300 bg-stone-50 p-1 dark:border-stone-700 dark:bg-stone-900">
               <Tooltip.Root>
                 <Tooltip.Trigger asChild>
