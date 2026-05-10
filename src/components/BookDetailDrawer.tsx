@@ -88,10 +88,12 @@ export function BookDetailDrawer({ book, onClose, onEdit, onDelete }: Props) {
               </button>
               <button
                 type="button"
-                className="inline-flex items-center gap-1 rounded-md border border-stone-300 px-2.5 py-1.5 text-xs hover:bg-stone-200 dark:border-stone-700 dark:hover:bg-stone-800"
+                className="inline-flex items-center justify-center rounded-md border border-stone-300 p-2 text-stone-600 hover:bg-stone-200 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
                 onClick={() => onDelete(book)}
+                aria-label={`Move ${book.title} to trash`}
+                title="Move to trash"
               >
-                <Trash2 size={13} /> Delete
+                <Trash2 size={15} />
               </button>
             </div>
 

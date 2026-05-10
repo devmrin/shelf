@@ -143,7 +143,8 @@ export function GalleryView({
                         event.stopPropagation();
                         onDeleteBook(book);
                       }}
-                      aria-label={`Delete ${book.title}`}
+                      aria-label={`Move ${book.title} to trash`}
+                      title="Move to trash"
                     >
                       <Trash2 size={14} className="text-stone-500" />
                     </button>

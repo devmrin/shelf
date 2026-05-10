@@ -1,13 +1,14 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Menu, Plus } from "lucide-react";
+import { Menu, Plus, Trash2 } from "lucide-react";
 import { Sidebar } from "../components/Sidebar";
 import { TopToolbar } from "../components/TopToolbar";
 import { GalleryView } from "../components/GalleryView";
 import { TableView } from "../components/TableView";
 import { BookDetailDrawer } from "../components/BookDetailDrawer";
 import { EmptyState } from "../components/EmptyState";
+import { ConfirmDialog } from "../components/ConfirmDialog";
 import { TrashDialog } from "../components/TrashDialog";
 import { ToastStack, type ToastItem } from "../components/ToastStack";
 import type {
@@ -35,6 +36,38 @@ import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useHotkeys } from "../hooks/useHotkeys";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 
+type PendingConfirm =
+  | { type: "softDelete"; book: Book }
+  | { type: "permDelete"; book: Book }
+  | { type: "permDeleteAll" };
+
+function confirmCopy(p: PendingConfirm) {
+  switch (p.type) {
+    case "softDelete":
+      return {
+        title: "Move to trash?",
+        description: `"${p.book.title}" will be moved to trash. You can restore it from the trash control in the toolbar.`,
+        confirmLabel: "Move to trash",
+        variant: "default" as const,
+      };
+    case "permDelete":
+      return {
+        title: "Delete forever?",
+        description: `"${p.book.title}" will be permanently removed. This cannot be undone.`,
+        confirmLabel: "Delete forever",
+        variant: "destructive" as const,
+      };
+    case "permDeleteAll":
+      return {
+        title: "Empty trash?",
+        description:
+          "Permanently delete all trashed books? This cannot be undone.",
+        confirmLabel: "Delete all forever",
+        variant: "destructive" as const,
+      };
+  }
+}
+
 function toFilters(quickFilters: QuickFilter[]) {
   const statuses: ReadingStatus[] = [];
   if (quickFilters.includes("unread")) statuses.push("unread");
@@ -57,6 +90,9 @@ export function ShelfPage() {
   const [contextBook, setContextBook] = useState<Book | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [trashOpen, setTrashOpen] = useState(false);
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(
+    null,
+  );
 
   const debouncedSearch = useDebouncedValue(search, 180);
   const isMobile = useMediaQuery("(max-width: 1023px)");
@@ -155,10 +191,11 @@ export function ShelfPage() {
     if (isMobile) setSidebarOpen(true);
   };
 
-  const deleteOne = async (book: Book) => {
-    const confirmed = window.confirm(`Delete \"${book.title}\"?`);
-    if (!confirmed) return;
+  const requestSoftDelete = (book: Book) => {
+    setPendingConfirm({ type: "softDelete", book });
+  };
 
+  const runSoftDelete = async (book: Book) => {
     await softDeleteBooks([book.id]);
 
     if (activeBook?.id === book.id) setActiveBook(undefined);
@@ -217,12 +254,11 @@ export function ShelfPage() {
     addToast({ message: `${book.title} restored` });
   };
 
-  const handlePermanentlyDeleteFromTrash = async (book: Book) => {
-    const confirmed = window.confirm(
-      `Permanently delete \"${book.title}\"? This cannot be undone.`,
-    );
-    if (!confirmed) return;
+  const handlePermanentlyDeleteFromTrash = (book: Book) => {
+    setPendingConfirm({ type: "permDelete", book });
+  };
 
+  const runPermanentDeleteOne = async (book: Book) => {
     await permanentlyDeleteBooks([book.id]);
 
     if (activeBook?.id === book.id) setActiveBook(undefined);
@@ -239,13 +275,13 @@ export function ShelfPage() {
     addToast({ message: `${ids.length} books restored` });
   };
 
-  const handlePermanentlyDeleteAllFromTrash = async () => {
+  const handlePermanentlyDeleteAllFromTrash = () => {
     if (!trashedBooks.length) return;
-    const confirmed = window.confirm(
-      `Permanently delete ${trashedBooks.length} trashed books? This cannot be undone.`,
-    );
-    if (!confirmed) return;
+    setPendingConfirm({ type: "permDeleteAll" });
+  };
 
+  const runPermanentDeleteAll = async () => {
+    if (!trashedBooks.length) return;
     const ids = trashedBooks.map((book) => book.id);
     await permanentlyDeleteBooks(ids);
 
@@ -254,6 +290,20 @@ export function ShelfPage() {
     if (editingBook && ids.includes(editingBook.id)) setEditingBook(undefined);
 
     addToast({ message: `${ids.length} books permanently deleted` });
+  };
+
+  const handleConfirmedAction = () => {
+    const p = pendingConfirm;
+    if (!p) return;
+    if (p.type === "softDelete") {
+      void runSoftDelete(p.book);
+      return;
+    }
+    if (p.type === "permDelete") {
+      void runPermanentDeleteOne(p.book);
+      return;
+    }
+    void runPermanentDeleteAll();
   };
 
   const quickFilterEmptyState = useMemo(() => {
@@ -375,9 +425,7 @@ export function ShelfPage() {
                   void cycleStatus(book);
                 }}
                 onEditBook={startEditing}
-                onDeleteBook={(book) => {
-                  void deleteOne(book);
-                }}
+                onDeleteBook={requestSoftDelete}
                 onContextMenu={(event, book) => {
                   event.preventDefault();
                   setContextBook(book);
@@ -390,9 +438,7 @@ export function ShelfPage() {
                 onToggleSelect={toggle}
                 onOpenBook={setActiveBook}
                 onEditBook={startEditing}
-                onDeleteBook={(book) => {
-                  void deleteOne(book);
-                }}
+                onDeleteBook={requestSoftDelete}
                 onBulkDelete={deleteSelected}
                 onBulkFavorite={() =>
                   bulkEditBooks(selectedIds, { favorite: true })
@@ -500,13 +546,14 @@ export function ShelfPage() {
             </button>
             <button
               type="button"
-              className="block w-full rounded-md px-2 py-1 text-left hover:bg-stone-100 dark:hover:bg-stone-800"
+              className="inline-flex w-full items-center gap-2 rounded-md px-2 py-1 text-left hover:bg-stone-100 dark:hover:bg-stone-800"
               onClick={() => {
-                void deleteOne(contextBook);
+                setPendingConfirm({ type: "softDelete", book: contextBook });
                 setContextBook(null);
               }}
             >
-              Delete Book
+              <Trash2 size={13} className="shrink-0 text-stone-500" />
+              Move to trash
             </button>
           </div>
         </div>
@@ -519,10 +566,18 @@ export function ShelfPage() {
           startEditing(book);
           setActiveBook(undefined);
         }}
-        onDelete={(book) => {
-          void deleteOne(book);
-        }}
+        onDelete={requestSoftDelete}
       />
+      {pendingConfirm ? (
+        <ConfirmDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setPendingConfirm(null);
+          }}
+          {...confirmCopy(pendingConfirm)}
+          onConfirm={handleConfirmedAction}
+        />
+      ) : null}
       <TrashDialog
         open={trashOpen}
         onOpenChange={setTrashOpen}

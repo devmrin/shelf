@@ -112,7 +112,8 @@ export function TableView(props: Props) {
               type="button"
               className="rounded p-1 hover:bg-stone-200 dark:hover:bg-stone-800"
               onClick={() => props.onDeleteBook(ctx.row.original)}
-              aria-label={`Delete ${ctx.row.original.title}`}
+              aria-label={`Move ${ctx.row.original.title} to trash`}
+              title="Move to trash"
             >
               <Trash2 size={14} className="text-stone-500" />
             </button>
@@ -193,11 +194,13 @@ export function TableView(props: Props) {
                 Donate
               </button>
               <button
-                className="rounded-md border border-stone-300 px-2 py-1 hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
+                className="inline-flex items-center justify-center rounded-md border border-stone-300 px-2 py-1 hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
                 type="button"
                 onClick={() => void props.onBulkDelete()}
+                aria-label="Move selected to trash"
+                title="Move selected to trash"
               >
-                Trash
+                <Trash2 size={14} className="text-stone-600 dark:text-stone-300" />
               </button>
               <button
                 className="rounded-md border border-stone-300 px-2 py-1 hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
