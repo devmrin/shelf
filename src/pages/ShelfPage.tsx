@@ -22,6 +22,7 @@ import {
   bulkEditBooks,
   collectionStats,
   exportJson,
+  getCategoryTagOptions,
   getTrashedBooks,
   importJson,
   permanentlyDeleteBooks,
@@ -68,7 +69,11 @@ function confirmCopy(p: PendingConfirm) {
   }
 }
 
-function toFilters(quickFilters: QuickFilter[]) {
+function toFilters(
+  quickFilters: QuickFilter[],
+  selectedCategories: string[],
+  selectedTags: string[],
+) {
   const statuses: ReadingStatus[] = [];
   if (quickFilters.includes("unread")) statuses.push("unread");
   if (quickFilters.includes("reading")) statuses.push("reading");
@@ -80,6 +85,8 @@ function toFilters(quickFilters: QuickFilter[]) {
     hasImage: quickFilters.includes("has-image"),
     missingMetadata: quickFilters.includes("missing-metadata"),
     statuses: statuses.length ? statuses : undefined,
+    categories: selectedCategories.length ? selectedCategories : undefined,
+    tags: selectedTags.length ? selectedTags : undefined,
   };
 }
 
@@ -105,6 +112,10 @@ export function ShelfPage() {
     setSortMode,
     quickFilters,
     toggleQuickFilter,
+    selectedCategories,
+    selectedTags,
+    setSelectedCategories,
+    setSelectedTags,
     sidebarOpen,
     setSidebarOpen,
     darkMode,
@@ -115,15 +126,47 @@ export function ShelfPage() {
 
   const { selectedIds, toggle, clear } = useSelectionStore();
 
+  const taxonomyOptions =
+    useLiveQuery(() => getCategoryTagOptions(), []) ?? {
+      categories: [],
+      tags: [],
+    };
+
+  const categoryFilterOptions = useMemo(
+    () =>
+      [...new Set([...taxonomyOptions.categories, ...selectedCategories])].sort(
+        (a, b) => a.localeCompare(b),
+      ),
+    [taxonomyOptions.categories, selectedCategories],
+  );
+
+  const tagFilterOptions = useMemo(
+    () =>
+      [...new Set([...taxonomyOptions.tags, ...selectedTags])].sort((a, b) =>
+        a.localeCompare(b),
+      ),
+    [taxonomyOptions.tags, selectedTags],
+  );
+
   const books =
     useLiveQuery(
       () =>
         queryBooks({
           search: debouncedSearch,
-          filters: toFilters(quickFilters),
+          filters: toFilters(
+            quickFilters,
+            selectedCategories,
+            selectedTags,
+          ),
           sort: sortMode,
         }),
-      [debouncedSearch, quickFilters, sortMode],
+      [
+        debouncedSearch,
+        quickFilters,
+        sortMode,
+        selectedCategories,
+        selectedTags,
+      ],
       [],
     ) ?? [];
 
@@ -363,6 +406,14 @@ export function ShelfPage() {
           <TopToolbar
             search={search}
             onSearchChange={setSearch}
+            categoryOptions={categoryFilterOptions}
+            tagOptions={tagFilterOptions}
+            selectedCategory={selectedCategories[0]}
+            selectedTag={selectedTags[0]}
+            onCategoryFilterChange={(value) =>
+              setSelectedCategories(value ? [value] : [])
+            }
+            onTagFilterChange={(value) => setSelectedTags(value ? [value] : [])}
             viewMode={viewMode}
             onViewModeChange={setViewMode}
             sortMode={sortMode}
@@ -381,15 +432,22 @@ export function ShelfPage() {
             {books.length === 0 ? (
               <EmptyState
                 title={
-                  debouncedSearch || quickFilters.length
+                  debouncedSearch.trim() ||
+                  quickFilters.length ||
+                  selectedCategories.length ||
+                  selectedTags.length
                     ? "No results"
                     : "Your shelf is empty"
                 }
                 description={
-                  debouncedSearch
+                  debouncedSearch.trim()
                     ? "Try another query or clear filters."
                     : (quickFilterEmptyState ??
-                      "Add your first book from the left panel.")
+                      (quickFilters.length ||
+                      selectedCategories.length ||
+                      selectedTags.length
+                        ? "No books matched these filters."
+                        : "Add your first book from the left panel."))
                 }
                 action={
                   <button

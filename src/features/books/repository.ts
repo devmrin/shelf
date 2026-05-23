@@ -2,12 +2,14 @@ import Fuse from 'fuse.js'
 import { db } from '../../db/database'
 import type { Book, BookDraft, ReadingStatus, SortMode } from './types'
 import { createId } from '../../utils/id'
+import { searchBooks } from './search'
 
 export type BookFilters = {
   favorites?: boolean
   donate?: boolean
   statuses?: ReadingStatus[]
   categories?: string[]
+  tags?: string[]
   hasImage?: boolean
   missingMetadata?: boolean
   recentDays?: number
@@ -202,6 +204,11 @@ export async function queryBooks(params: {
       (book.categories ?? []).some((category) => filters.categories?.includes(category)),
     )
   }
+  if (filters.tags?.length) {
+    filtered = filtered.filter((book) =>
+      (book.tags ?? []).some((tag) => filters.tags?.includes(tag)),
+    )
+  }
   if (filters.hasImage) filtered = filtered.filter((book) => Boolean(book.coverImage))
   if (filters.missingMetadata) {
     filtered = filtered.filter(
@@ -214,12 +221,7 @@ export async function queryBooks(params: {
   }
 
   if (search.trim()) {
-    const fuse = new Fuse(filtered, {
-      includeScore: true,
-      threshold: 0.32,
-      keys: ['title', 'author', 'isbn', 'tags', 'notes'],
-    })
-    filtered = fuse.search(search).map((entry) => entry.item)
+    filtered = searchBooks(filtered, search)
   }
 
   return sortBooks(filtered, sort)

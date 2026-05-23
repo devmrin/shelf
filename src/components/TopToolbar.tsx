@@ -11,11 +11,18 @@ import {
 } from "lucide-react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import type { QuickFilter, SortMode, ViewMode } from "../features/books/types";
+import { FilterSelect } from "./FilterSelect";
 import { SingleSelect } from "./SingleSelect";
 
 type Props = {
   search: string;
   onSearchChange: (value: string) => void;
+  categoryOptions: string[];
+  tagOptions: string[];
+  selectedCategory: string | undefined;
+  selectedTag: string | undefined;
+  onCategoryFilterChange: (value: string | undefined) => void;
+  onTagFilterChange: (value: string | undefined) => void;
   viewMode: ViewMode;
   onViewModeChange: (mode: ViewMode) => void;
   sortMode: SortMode;
@@ -54,7 +61,7 @@ export function TopToolbar(props: Props) {
               value={props.search}
               onChange={(event) => props.onSearchChange(event.target.value)}
               className="h-9 w-full rounded-lg border border-stone-300 bg-stone-50 pl-8 pr-2 text-sm outline-none ring-stone-400 placeholder:text-stone-400 focus:ring-2 dark:border-stone-700 dark:bg-stone-900"
-              placeholder="Search title, author, tags, ISBN, notes..."
+              placeholder="Search books, authors, categories, tags, publisher..."
               aria-label="Global book search"
             />
           </label>
@@ -130,20 +137,37 @@ export function TopToolbar(props: Props) {
         </div>
 
         <div className="mt-2 flex items-center justify-between gap-2">
-          <div className="flex flex-1 flex-wrap gap-2">
-            {QUICK_FILTERS.map((filter) => {
-              const active = props.quickFilters.includes(filter);
-              return (
-                <button
-                  key={filter}
-                  type="button"
-                  className={`rounded-full px-2 py-1 text-xs ${active ? "bg-stone-800 text-stone-100 dark:bg-stone-100 dark:text-stone-900" : "bg-stone-200 text-stone-700 dark:bg-stone-800 dark:text-stone-200"}`}
-                  onClick={() => props.onToggleQuickFilter(filter)}
-                >
-                  {filter}
-                </button>
-              );
-            })}
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <FilterSelect
+              ariaLabel="Filter by category"
+              allLabel="All categories"
+              options={props.categoryOptions}
+              value={props.selectedCategory}
+              onValueChange={props.onCategoryFilterChange}
+            />
+            <FilterSelect
+              ariaLabel="Filter by tag"
+              allLabel="All tags"
+              options={props.tagOptions}
+              value={props.selectedTag}
+              onValueChange={props.onTagFilterChange}
+            />
+
+            <div className="flex flex-wrap gap-2">
+              {QUICK_FILTERS.map((filter) => {
+                const active = props.quickFilters.includes(filter);
+                return (
+                  <button
+                    key={filter}
+                    type="button"
+                    className={`rounded-full px-2 py-1 text-xs ${active ? "bg-stone-800 text-stone-100 dark:bg-stone-100 dark:text-stone-900" : "bg-stone-200 text-stone-700 dark:bg-stone-800 dark:text-stone-200"}`}
+                    onClick={() => props.onToggleQuickFilter(filter)}
+                  >
+                    {filter}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           <div className="flex shrink-0 items-center gap-2">
