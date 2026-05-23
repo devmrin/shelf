@@ -35,6 +35,7 @@ type Props = {
   onImport: (file: File) => Promise<void>;
   trashedCount: number;
   onOpenTrash: () => void;
+  folderScopeLabel?: string;
 };
 
 const QUICK_FILTERS: QuickFilter[] = [
@@ -279,6 +280,12 @@ export function TopToolbar(props: Props) {
             </div>
           </div>
         </div>
+
+        {props.folderScopeLabel ? (
+          <p className="mt-2 px-1 text-[11px] text-stone-600 dark:text-stone-400">
+            {props.folderScopeLabel}
+          </p>
+        ) : null}
       </header>
     </Tooltip.Provider>
   );

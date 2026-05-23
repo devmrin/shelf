@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { QuickFilter, SortMode, ViewMode } from '../features/books/types'
+import type { ActiveFolderId, QuickFilter, SortMode, ViewMode } from '../features/books/types'
 
 type UIState = {
   viewMode: ViewMode
@@ -11,6 +11,8 @@ type UIState = {
   /** Taxonomy dropdown filters — OR semantics per type in queryBooks */
   selectedCategories: string[]
   selectedTags: string[]
+  /** Main shelf folder scope */
+  activeFolderId: ActiveFolderId
   columnVisibility: Record<string, boolean>
   setViewMode: (value: ViewMode) => void
   setSortMode: (value: SortMode) => void
@@ -19,6 +21,7 @@ type UIState = {
   toggleQuickFilter: (value: QuickFilter) => void
   setSelectedCategories: (value: string[]) => void
   setSelectedTags: (value: string[]) => void
+  setActiveFolderId: (value: ActiveFolderId) => void
   setColumnVisibility: (value: Record<string, boolean>) => void
 }
 
@@ -32,6 +35,7 @@ export const useUIStore = create<UIState>()(
       quickFilters: [],
       selectedCategories: [],
       selectedTags: [],
+      activeFolderId: 'uncategorized',
       columnVisibility: {},
       setViewMode: (viewMode) => set({ viewMode }),
       setSortMode: (sortMode) => set({ sortMode }),
@@ -45,8 +49,18 @@ export const useUIStore = create<UIState>()(
         })),
       setSelectedCategories: (selectedCategories) => set({ selectedCategories }),
       setSelectedTags: (selectedTags) => set({ selectedTags }),
+      setActiveFolderId: (activeFolderId) => set({ activeFolderId }),
       setColumnVisibility: (columnVisibility) => set({ columnVisibility }),
     }),
-    { name: 'shelf-ui-state' },
+    {
+      name: 'shelf-ui-state',
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<UIState>
+        const raw = p.activeFolderId ?? current.activeFolderId
+        const activeFolderId =
+          (typeof raw === 'string' && raw === 'all' ? 'uncategorized' : raw) as ActiveFolderId
+        return { ...current, ...p, activeFolderId }
+      },
+    },
   ),
 )

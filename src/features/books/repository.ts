@@ -1,6 +1,13 @@
 import Fuse from 'fuse.js'
 import { db } from '../../db/database'
-import type { Book, BookDraft, ReadingStatus, SortMode } from './types'
+import type {
+  ActiveFolderId,
+  Book,
+  BookDraft,
+  Folder,
+  ReadingStatus,
+  SortMode,
+} from './types'
 import { createId } from '../../utils/id'
 import { searchBooks } from './search'
 
@@ -30,6 +37,8 @@ export type CollectionStats = {
   reading: number
   completed: number
 }
+
+export type FolderWithCounts = Folder & { bookCount: number }
 
 function normalize(value?: string) {
   return value?.trim().toLowerCase() ?? ''
@@ -112,6 +121,7 @@ export async function addBook(input: BookDraft) {
     isbn: input.isbn?.trim(),
     publisher: input.publisher?.trim(),
     publishedYear: input.publishedYear,
+    folderId: input.folderId,
     categories: input.categories ?? [],
     tags: input.tags ?? [],
     notes: input.notes,
@@ -181,16 +191,27 @@ export async function getTrashedBooks() {
   return books.sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0))
 }
 
+function applyFolderScope(books: Book[], folderScope: ActiveFolderId | undefined) {
+  const scope = folderScope ?? 'uncategorized'
+  if (scope === 'uncategorized') {
+    return books.filter((book) => book.folderId == null || book.folderId === '')
+  }
+  return books.filter((book) => book.folderId === scope)
+}
+
 export async function queryBooks(params: {
   search: string
   filters: BookFilters
   sort: SortMode
+  folderScope?: ActiveFolderId
 }) {
-  const { search, filters, sort } = params
+  const { search, filters, sort, folderScope } = params
   const books = await db.books.toArray()
   const now = Date.now()
 
   let filtered = books.filter((book) => filters.includeDeleted || !book.deletedAt)
+
+  filtered = applyFolderScope(filtered, folderScope)
 
   if (filters.favorites) filtered = filtered.filter((book) => book.isFavorite)
   if (filters.donate) filtered = filtered.filter((book) => book.readyToDonate)
@@ -261,6 +282,7 @@ export async function bulkEditBooks(
     addTag?: string
     favorite?: boolean
     donate?: boolean
+    folderId?: string | null
   },
 ) {
   await upsertTaxonomyValues({
@@ -278,19 +300,116 @@ export async function bulkEditBooks(
       if (patch.addCategory?.trim()) categories.add(patch.addCategory.trim())
       if (patch.addTag?.trim()) tags.add(patch.addTag.trim())
 
+      const changes: Partial<Book> & { updatedAt: number } = {
+        categories: [...categories],
+        tags: [...tags],
+        isFavorite: patch.favorite ?? book.isFavorite,
+        readyToDonate: patch.donate ?? book.readyToDonate,
+        updatedAt: Date.now(),
+      }
+      if (patch.folderId !== undefined) {
+        changes.folderId = patch.folderId === null ? undefined : patch.folderId
+      }
+
       return {
         key: book.id,
-        changes: {
-          categories: [...categories],
-          tags: [...tags],
-          isFavorite: patch.favorite ?? book.isFavorite,
-          readyToDonate: patch.donate ?? book.readyToDonate,
-          updatedAt: Date.now(),
-        },
+        changes,
       }
     })
 
   await db.books.bulkUpdate(updates)
+}
+
+export async function listFolders(): Promise<FolderWithCounts[]> {
+  const [folders, books] = await Promise.all([
+    db.folders.orderBy('sortOrder').toArray(),
+    db.books.filter((book) => !book.deletedAt).toArray(),
+  ])
+
+  const countByFolderId = new Map<string, number>()
+  for (const book of books) {
+    const fid = book.folderId
+    if (!fid) continue
+    countByFolderId.set(fid, (countByFolderId.get(fid) ?? 0) + 1)
+  }
+
+  return folders.map((folder) => ({
+    ...folder,
+    bookCount: countByFolderId.get(folder.id) ?? 0,
+  }))
+}
+
+export async function createFolder(name: string) {
+  const trimmed = name.trim()
+  if (!trimmed) throw new Error('Folder name is required')
+
+  const existing = await db.folders.where('name').equals(trimmed).first()
+  if (existing) throw new Error(`A folder named "${trimmed}" already exists`)
+
+  const last = await db.folders.orderBy('sortOrder').last()
+  const sortOrder = (last?.sortOrder ?? -1) + 1
+  const now = Date.now()
+  const folder: Folder = {
+    id: createId('folder'),
+    name: trimmed,
+    sortOrder,
+    createdAt: now,
+    updatedAt: now,
+  }
+  await db.folders.add(folder)
+  return folder
+}
+
+export async function renameFolder(id: string, name: string) {
+  const trimmed = name.trim()
+  if (!trimmed) throw new Error('Folder name is required')
+
+  const clashes = await db.folders.where('name').equals(trimmed).toArray()
+  if (clashes.some((row) => row.id !== id)) {
+    throw new Error(`A folder named "${trimmed}" already exists`)
+  }
+
+  await db.folders.update(id, { name: trimmed, updatedAt: Date.now() })
+}
+
+export async function deleteFolder(id: string) {
+  await db.transaction('rw', db.books, db.folders, async () => {
+    const booksInFolder = await db.books.filter((book) => book.folderId === id).toArray()
+    await db.books.bulkUpdate(
+      booksInFolder.map((book) => ({
+        key: book.id,
+        changes: { folderId: undefined, updatedAt: Date.now() },
+      })),
+    )
+    await db.folders.delete(id)
+  })
+}
+
+export async function moveBooksToFolder(ids: string[], folderId: string | null) {
+  if (folderId) {
+    const folder = await db.folders.get(folderId)
+    if (!folder) throw new Error('Folder not found')
+  }
+
+  const books = await db.books.bulkGet(ids)
+  const updates = books
+    .filter((book): book is Book => Boolean(book))
+    .map((book) => ({
+      key: book.id,
+      changes: {
+        folderId: folderId ?? undefined,
+        updatedAt: Date.now(),
+      },
+    }))
+
+  if (updates.length) {
+    await db.books.bulkUpdate(updates)
+  }
+}
+
+export async function countUncategorizedBooks() {
+  const books = await db.books.filter((book) => !book.deletedAt).toArray()
+  return books.filter((book) => book.folderId == null || book.folderId === '').length
 }
 
 export async function getCategoryTagOptions() {
@@ -333,17 +452,19 @@ export async function collectionStats(): Promise<CollectionStats> {
 }
 
 export async function exportJson() {
-  const [books, categories, tags, settings] = await Promise.all([
+  const [books, folders, categories, tags, settings] = await Promise.all([
     db.books.toArray(),
+    db.folders.toArray(),
     db.categories.toArray(),
     db.tags.toArray(),
     db.settings.toArray(),
   ])
 
   return {
-    version: 1,
+    version: 2,
     exportedAt: Date.now(),
     books,
+    folders,
     categories,
     tags,
     settings,
@@ -357,17 +478,17 @@ export async function importJson(payload: unknown) {
 
   const raw = payload as {
     books?: Book[]
+    folders?: Folder[]
     categories?: { id: string; value: string; createdAt: number }[]
     tags?: { id: string; value: string; createdAt: number }[]
     settings?: { key: string; value: string; updatedAt: number }[]
   }
 
-  await db.transaction('rw', db.books, db.categories, db.tags, db.settings, async () => {
-    if (raw.books) await db.books.bulkPut(raw.books)
-    if (raw.categories) await db.categories.bulkPut(raw.categories)
-    if (raw.tags) await db.tags.bulkPut(raw.tags)
-    if (raw.settings) await db.settings.bulkPut(raw.settings)
-  })
+  if (raw.folders) await db.folders.bulkPut(raw.folders)
+  if (raw.books) await db.books.bulkPut(raw.books)
+  if (raw.categories) await db.categories.bulkPut(raw.categories)
+  if (raw.tags) await db.tags.bulkPut(raw.tags)
+  if (raw.settings) await db.settings.bulkPut(raw.settings)
 }
 
 export async function estimateStorage() {

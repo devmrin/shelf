@@ -8,9 +8,12 @@ import {
   Trash2,
 } from "lucide-react";
 import type { Book } from "../features/books/types";
+import { writeShelfBookDrag } from "../utils/shelfDrag";
 
 type Props = {
   books: Book[];
+  /** When dragging, if this book is selected in table view, move the whole selection */
+  selectedIds: string[];
   onOpenBook: (book: Book) => void;
   onToggleFavorite: (book: Book) => void;
   onToggleDonate: (book: Book) => void;
@@ -22,6 +25,7 @@ type Props = {
 
 export function GalleryView({
   books,
+  selectedIds,
   onOpenBook,
   onToggleFavorite,
   onToggleDonate,
@@ -53,6 +57,13 @@ export function GalleryView({
           return (
             <article
               key={book.id}
+              draggable
+              onDragStart={(event) => {
+                const ids = selectedIds.includes(book.id)
+                  ? selectedIds
+                  : [book.id];
+                writeShelfBookDrag(event.dataTransfer, ids);
+              }}
               className="group relative rounded-xl border border-stone-200 bg-stone-50 p-2 shadow-sm transition hover:shadow-md dark:border-stone-800 dark:bg-stone-900"
               onClick={() => onOpenBook(book)}
               onDoubleClick={() => onToggleFavorite(book)}

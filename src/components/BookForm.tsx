@@ -8,6 +8,7 @@ import {
   clearDraft,
   getCategoryTagOptions,
   getDraft,
+  listFolders,
   upsertDraft,
 } from "../features/books/repository";
 import { filesFromClipboard, optimizeImage } from "../utils/image";
@@ -19,6 +20,8 @@ type Props = {
   onSave: (data: BookDraft) => Promise<void>;
   editingBook?: Book;
   onCancelEdit?: () => void;
+  /** When adding a book, default folder (folder id) from the current shelf scope */
+  preferredFolderId?: string;
 };
 
 type FormValues = {
@@ -34,15 +37,25 @@ type FormValues = {
   status: "unread" | "reading" | "completed";
   readyToDonate: boolean;
   isFavorite: boolean;
+  folderIdSelect: string;
 };
 
 const DRAFT_KEY = "book-form-draft";
 
-function toFormValues(book?: Book): FormValues {
+/** Radix Select cannot use empty string as a value */
+const FOLDER_NONE = "__uncategorized__";
+
+function toFormValues(book?: Book, preferredFolderId?: string): FormValues {
   const authorList = (book?.author ?? "")
     .split(",")
     .map((entry) => entry.trim())
     .filter(Boolean);
+
+  const folderIdSelect = book?.folderId
+    ? book.folderId
+    : preferredFolderId && preferredFolderId.length > 0
+      ? preferredFolderId
+      : FOLDER_NONE;
 
   return {
     title: book?.title ?? "",
@@ -58,6 +71,7 @@ function toFormValues(book?: Book): FormValues {
     status: book?.status ?? "unread",
     readyToDonate: book?.readyToDonate ?? false,
     isFavorite: book?.isFavorite ?? false,
+    folderIdSelect,
   };
 }
 
@@ -77,13 +91,15 @@ export function BookForm(props: Props) {
 
   const { register, handleSubmit, watch, reset, setValue } =
     useForm<FormValues>({
-      defaultValues: toFormValues(props.editingBook),
+      defaultValues: toFormValues(props.editingBook, props.preferredFolderId),
     });
 
   const categoryTagOptions = useLiveQuery(() => getCategoryTagOptions(), [], {
     categories: [],
     tags: [],
   }) ?? { categories: [], tags: [] };
+
+  const folderChoices = useLiveQuery(() => listFolders(), []) ?? [];
 
   const title = watch("title");
   const authors = watch("authors") ?? [];
@@ -93,6 +109,7 @@ export function BookForm(props: Props) {
   const status = watch("status");
   const isFavorite = watch("isFavorite");
   const readyToDonate = watch("readyToDonate");
+  const folderIdSelect = watch("folderIdSelect");
   const author = authors
     .map((entry) => entry.trim())
     .filter(Boolean)
@@ -108,6 +125,17 @@ export function BookForm(props: Props) {
       setShowMore(true);
     }
   }, [props.editingBook, reset]);
+
+  useEffect(() => {
+    if (props.editingBook) return;
+    setValue(
+      "folderIdSelect",
+      props.preferredFolderId && props.preferredFolderId.length > 0
+        ? props.preferredFolderId
+        : FOLDER_NONE,
+      { shouldDirty: false },
+    );
+  }, [props.preferredFolderId, props.editingBook, setValue]);
 
   useEffect(() => {
     void (async () => {
@@ -168,6 +196,10 @@ export function BookForm(props: Props) {
               : "unread",
           readyToDonate: Boolean(parsed.readyToDonate),
           isFavorite: Boolean(parsed.isFavorite),
+          folderIdSelect:
+            typeof parsed.folderIdSelect === "string"
+              ? parsed.folderIdSelect
+              : FOLDER_NONE,
         });
         setCoverImage(
           typeof parsed.coverImage === "string" ? parsed.coverImage : undefined,
@@ -230,6 +262,17 @@ export function BookForm(props: Props) {
 
   const canSave = useMemo(() => title.trim().length > 0, [title]);
 
+  const folderSelectOptions = useMemo(
+    () => [
+      { value: FOLDER_NONE, label: "Uncategorized" },
+      ...folderChoices.map((f) => ({
+        value: f.id,
+        label: f.name,
+      })),
+    ],
+    [folderChoices],
+  );
+
   const addImageFiles = async (files: Blob[]) => {
     const optimized = await Promise.all(
       files.map(async (file) => {
@@ -257,23 +300,28 @@ export function BookForm(props: Props) {
           ? parsedPublishedYear
           : undefined;
 
+      const { folderIdSelect: folderChoice, authors: authorFields, ...fields } =
+        values;
+
       const payload: BookDraft = {
-        ...values,
+        ...fields,
         publishedYear: normalizedPublishedYear,
         author:
-          values.authors
+          authorFields
             .map((entry) => entry.trim())
             .filter(Boolean)
             .join(", ") || undefined,
         categories: values.categories,
         tags: values.tags,
+        folderId:
+          folderChoice === FOLDER_NONE ? undefined : folderChoice,
         coverImage,
         additionalImages,
       };
 
       await props.onSave(payload);
 
-      reset(toFormValues());
+      reset(toFormValues(undefined, props.preferredFolderId));
       setDuplicates([]);
       setCoverImage(undefined);
       setAdditionalImages([]);
@@ -373,6 +421,23 @@ export function BookForm(props: Props) {
 
       {showMore && (
         <div className="grid grid-cols-2 gap-2">
+          <div className="col-span-2">
+            <span className="mb-1 block text-[11px] text-stone-500 dark:text-stone-400">
+              Folder
+            </span>
+            <SingleSelect
+              value={
+                folderSelectOptions.some((o) => o.value === folderIdSelect)
+                  ? folderIdSelect
+                  : FOLDER_NONE
+              }
+              onValueChange={(next) =>
+                setValue("folderIdSelect", next, { shouldDirty: true })
+              }
+              ariaLabel="Book folder"
+              options={folderSelectOptions}
+            />
+          </div>
           <div className="col-span-2">
             <label
               htmlFor={coverInputId}

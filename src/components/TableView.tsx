@@ -10,11 +10,13 @@ import {
 } from "@tanstack/react-table";
 import { Heart, Pencil, Trash2 } from "lucide-react";
 import type { Book } from "../features/books/types";
+import { writeShelfBookDrag } from "../utils/shelfDrag";
 import { RadixCheckbox } from "./RadixCheckbox";
 
 type Props = {
   books: Book[];
   selectedIds: string[];
+  folderOptions: { id: string; name: string }[];
   onToggleSelect: (id: string) => void;
   onOpenBook: (book: Book) => void;
   onEditBook: (book: Book) => void;
@@ -24,6 +26,7 @@ type Props = {
   onBulkDonate: () => Promise<void>;
   onBulkAddCategory: (value: string) => Promise<void>;
   onBulkAddTag: (value: string) => Promise<void>;
+  onBulkMoveToFolder: (folderId: string | null) => Promise<void>;
   columnVisibility: VisibilityState;
   onColumnVisibilityChange: (value: Updater<VisibilityState>) => void;
 };
@@ -178,7 +181,7 @@ export function TableView(props: Props) {
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-600 dark:text-stone-300">
               Bulk Actions ({selectedCount})
             </h3>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
               <button
                 className="rounded-md border border-stone-300 px-2 py-1 hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
                 type="button"
@@ -193,6 +196,27 @@ export function TableView(props: Props) {
               >
                 Donate
               </button>
+              <select
+                className="col-span-2 h-8 rounded-md border border-stone-300 bg-white px-2 text-xs dark:border-stone-700 dark:bg-stone-950 sm:col-span-1"
+                aria-label="Move selected books to folder"
+                defaultValue=""
+                onChange={(event) => {
+                  const value = event.target.value;
+                  if (!value) return;
+                  void props.onBulkMoveToFolder(
+                    value === "__uncategorized__" ? null : value,
+                  );
+                  event.target.value = "";
+                }}
+              >
+                <option value="">Move to folder…</option>
+                <option value="__uncategorized__">Uncategorized</option>
+                {props.folderOptions.map((folder) => (
+                  <option key={folder.id} value={folder.id}>
+                    {folder.name}
+                  </option>
+                ))}
+              </select>
               <button
                 className="inline-flex items-center justify-center rounded-md border border-stone-300 px-2 py-1 hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
                 type="button"
@@ -255,6 +279,13 @@ export function TableView(props: Props) {
             {rows.map((row) => (
               <tr
                 key={row.id}
+                draggable
+                onDragStart={(event) => {
+                  const ids = props.selectedIds.includes(row.original.id)
+                    ? props.selectedIds
+                    : [row.original.id];
+                  writeShelfBookDrag(event.dataTransfer, ids);
+                }}
                 className="border-b border-stone-100 hover:bg-stone-50 dark:border-stone-800 dark:hover:bg-stone-900"
                 onDoubleClick={() => props.onOpenBook(row.original)}
               >

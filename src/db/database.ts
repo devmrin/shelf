@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Book } from '../features/books/types'
+import type { Book, Folder } from '../features/books/types'
 
 export type CategoryEntity = {
   id: string
@@ -27,6 +27,7 @@ export type DraftEntity = {
 
 class ShelfDatabase extends Dexie {
   books!: EntityTable<Book, 'id'>
+  folders!: EntityTable<Folder, 'id'>
   categories!: EntityTable<CategoryEntity, 'id'>
   tags!: EntityTable<TagEntity, 'id'>
   settings!: EntityTable<SettingsEntity, 'key'>
@@ -38,6 +39,15 @@ class ShelfDatabase extends Dexie {
     this.version(1).stores({
       books:
         'id, title, author, isbn, *categories, *tags, isFavorite, readyToDonate, status, createdAt, updatedAt, deletedAt',
+      categories: 'id, value, createdAt',
+      tags: 'id, value, createdAt',
+      settings: 'key, updatedAt',
+      drafts: 'key, updatedAt',
+    })
+    this.version(2).stores({
+      books:
+        'id, title, author, isbn, *categories, *tags, isFavorite, readyToDonate, status, folderId, createdAt, updatedAt, deletedAt',
+      folders: 'id, name, sortOrder, createdAt, updatedAt',
       categories: 'id, value, createdAt',
       tags: 'id, value, createdAt',
       settings: 'key, updatedAt',

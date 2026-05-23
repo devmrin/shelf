@@ -1,12 +1,33 @@
-import type { Book, BookDraft } from "../features/books/types";
-import type { CollectionStats } from "../features/books/repository";
+import type {
+  ActiveFolderId,
+  Book,
+  BookDraft,
+  Folder,
+} from "../features/books/types";
+import type {
+  CollectionStats,
+  FolderWithCounts,
+} from "../features/books/repository";
 import { BookForm } from "./BookForm";
+import { FolderNav } from "./FolderNav";
 
 type Props = {
   onSave: (payload: BookDraft) => Promise<void>;
   stats: CollectionStats;
   editingBook?: Book;
   onCancelEdit?: () => void;
+  preferredFolderId?: string;
+  folders: FolderWithCounts[];
+  uncategorizedCount: number;
+  activeFolderId: ActiveFolderId;
+  onSelectFolder: (id: ActiveFolderId) => void;
+  onCreateFolder: (name: string) => Promise<void>;
+  onRenameFolder: (id: string, name: string) => Promise<void>;
+  onRequestDeleteFolder: (folder: Folder) => void;
+  onMoveBooksToFolder: (
+    folderId: string | null,
+    bookIds: string[],
+  ) => Promise<void>;
 };
 
 export function Sidebar(props: Props) {
@@ -17,6 +38,18 @@ export function Sidebar(props: Props) {
         onSave={props.onSave}
         editingBook={props.editingBook}
         onCancelEdit={props.onCancelEdit}
+        preferredFolderId={props.preferredFolderId}
+      />
+
+      <FolderNav
+        folders={props.folders}
+        uncategorizedCount={props.uncategorizedCount}
+        activeFolderId={props.activeFolderId}
+        onSelectFolder={props.onSelectFolder}
+        onCreateFolder={props.onCreateFolder}
+        onRenameFolder={props.onRenameFolder}
+        onRequestDeleteFolder={props.onRequestDeleteFolder}
+        onMoveBooksToFolder={props.onMoveBooksToFolder}
       />
 
       <section className="rounded-xl border border-stone-200 bg-stone-50 p-3 text-sm dark:border-stone-800 dark:bg-stone-900">
