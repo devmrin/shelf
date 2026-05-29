@@ -65,3 +65,27 @@ export async function filesFromClipboard(event: ClipboardEvent) {
   }
   return files
 }
+
+export function clipboardImageReadSupported() {
+  return (
+    typeof navigator !== 'undefined' &&
+    typeof navigator.clipboard?.read === 'function' &&
+    typeof window !== 'undefined' &&
+    typeof window.ClipboardItem !== 'undefined'
+  )
+}
+
+export async function readImagesFromClipboard(): Promise<Blob[]> {
+  if (!clipboardImageReadSupported()) {
+    throw new Error('Clipboard images are not supported in this browser')
+  }
+  const items = await navigator.clipboard.read()
+  const blobs: Blob[] = []
+  for (const item of items) {
+    const imageType = item.types.find((type) => type.startsWith('image/'))
+    if (imageType) {
+      blobs.push(await item.getType(imageType))
+    }
+  }
+  return blobs
+}

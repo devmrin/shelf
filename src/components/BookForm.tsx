@@ -1,7 +1,15 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useLiveQuery } from "dexie-react-hooks";
-import { ChevronDown, ChevronUp, Plus, Star, X } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Clipboard,
+  ImagePlus,
+  Plus,
+  Star,
+  X,
+} from "lucide-react";
 import type { Book, BookDraft } from "../features/books/types";
 import {
   detectDuplicates,
@@ -11,7 +19,12 @@ import {
   listFolders,
   upsertDraft,
 } from "../features/books/repository";
-import { filesFromClipboard, optimizeImage } from "../utils/image";
+import {
+  clipboardImageReadSupported,
+  filesFromClipboard,
+  optimizeImage,
+  readImagesFromClipboard,
+} from "../utils/image";
 import { MultiValueSelect } from "./MultiValueSelect";
 import { RadixCheckbox } from "./RadixCheckbox";
 import { SingleSelect } from "./SingleSelect";
@@ -87,6 +100,10 @@ export function BookForm(props: Props) {
   const [duplicates, setDuplicates] = useState<
     { id: string; title: string; author?: string }[]
   >([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [pasteStatus, setPasteStatus] = useState<string | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const canReadClipboard = useMemo(() => clipboardImageReadSupported(), []);
   const coverInputId = "book-cover-upload";
 
   const { register, handleSubmit, watch, reset, setValue } =
@@ -249,16 +266,39 @@ export function BookForm(props: Props) {
   }, [title, author, props.editingBook?.id]);
 
   useEffect(() => {
+    const form = formRef.current;
+    if (!form) return;
     const handler = (event: ClipboardEvent) => {
       void filesFromClipboard(event).then((files) => {
         if (!files.length) return;
         event.preventDefault();
         void addImageFiles(files);
+        setPasteStatus("Image pasted");
       });
     };
-    window.addEventListener("paste", handler);
-    return () => window.removeEventListener("paste", handler);
-  });
+    form.addEventListener("paste", handler);
+    return () => form.removeEventListener("paste", handler);
+  }, []);
+
+  useEffect(() => {
+    if (!pasteStatus) return;
+    const id = window.setTimeout(() => setPasteStatus(null), 2400);
+    return () => window.clearTimeout(id);
+  }, [pasteStatus]);
+
+  const pasteFromClipboard = async () => {
+    try {
+      const blobs = await readImagesFromClipboard();
+      if (!blobs.length) {
+        setPasteStatus("No image found on the clipboard");
+        return;
+      }
+      await addImageFiles(blobs);
+      setPasteStatus("Image pasted");
+    } catch {
+      setPasteStatus("Couldn't read the clipboard — try Ctrl/Cmd+V instead");
+    }
+  };
 
   const canSave = useMemo(() => title.trim().length > 0, [title]);
 
@@ -334,6 +374,7 @@ export function BookForm(props: Props) {
 
   return (
     <form
+      ref={formRef}
       onSubmit={onSubmit}
       className="space-y-2 rounded-xl border border-stone-200 bg-stone-50 p-3 shadow-sm dark:border-stone-800 dark:bg-stone-900"
       onDragOver={(event) => event.preventDefault()}
@@ -438,12 +479,36 @@ export function BookForm(props: Props) {
               options={folderSelectOptions}
             />
           </div>
-          <div className="col-span-2">
+          <div className="col-span-2 space-y-2">
             <label
               htmlFor={coverInputId}
-              className="inline-flex h-8 cursor-pointer items-center rounded-md border border-stone-300 px-2 text-xs hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
+              onDragEnter={(event) => {
+                event.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragOver={(event) => event.preventDefault()}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(event) => {
+                event.preventDefault();
+                setIsDragging(false);
+                const files = Array.from(event.dataTransfer.files).filter(
+                  (file) => file.type.startsWith("image/"),
+                );
+                if (files.length) void addImageFiles(files);
+              }}
+              className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed px-3 py-4 text-center transition-colors ${
+                isDragging
+                  ? "border-stone-500 bg-stone-100 dark:border-stone-400 dark:bg-stone-800"
+                  : "border-stone-300 hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
+              }`}
             >
-              Upload cover
+              <ImagePlus className="h-5 w-5 text-stone-400" />
+              <span className="text-xs font-medium text-stone-700 dark:text-stone-200">
+                Drop, paste, or click to add a cover
+              </span>
+              <span className="text-[10px] text-stone-400">
+                Paste a screenshot with Ctrl/Cmd+V
+              </span>
             </label>
             <input
               id={coverInputId}
@@ -458,6 +523,23 @@ export function BookForm(props: Props) {
                 event.target.value = "";
               }}
             />
+
+            {canReadClipboard ? (
+              <button
+                type="button"
+                onClick={() => void pasteFromClipboard()}
+                className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-stone-300 px-2 text-xs hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
+              >
+                <Clipboard className="h-3.5 w-3.5" />
+                Paste image from clipboard
+              </button>
+            ) : null}
+
+            {pasteStatus ? (
+              <p className="text-[10px] text-stone-500 dark:text-stone-400">
+                {pasteStatus}
+              </p>
+            ) : null}
           </div>
 
           {coverImage ? (

@@ -145,7 +145,7 @@ export function ShelfPage() {
     setActiveFolderId,
   } = useUIStore();
 
-  const { selectedIds, toggle, clear } = useSelectionStore();
+  const { selectedIds, toggle, clear, setMany } = useSelectionStore();
 
   const folderRows = useLiveQuery(() => listFolders(), []) ?? [];
   const uncategorizedCount =
@@ -620,6 +620,9 @@ export function ShelfPage() {
                   name: folder.name,
                 }))}
                 onToggleSelect={toggle}
+                onToggleSelectAll={(selectAll) =>
+                  selectAll ? setMany(books.map((book) => book.id)) : clear()
+                }
                 onOpenBook={setActiveBook}
                 onEditBook={startEditing}
                 onDeleteBook={requestSoftDelete}

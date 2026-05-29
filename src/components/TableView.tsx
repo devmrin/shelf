@@ -1,14 +1,15 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   createColumnHelper,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
   useReactTable,
+  type SortingState,
   type Updater,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { Heart, Pencil, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronsUpDown, ChevronUp, Pencil, Trash2 } from "lucide-react";
 import type { Book } from "../features/books/types";
 import { writeShelfBookDrag } from "../utils/shelfDrag";
 import { RadixCheckbox } from "./RadixCheckbox";
@@ -18,6 +19,7 @@ type Props = {
   selectedIds: string[];
   folderOptions: { id: string; name: string }[];
   onToggleSelect: (id: string) => void;
+  onToggleSelectAll: (selectAll: boolean) => void;
   onOpenBook: (book: Book) => void;
   onEditBook: (book: Book) => void;
   onDeleteBook: (book: Book) => void;
@@ -34,11 +36,27 @@ type Props = {
 const columnHelper = createColumnHelper<Book>();
 
 export function TableView(props: Props) {
+  const allIds = useMemo(
+    () => props.books.map((book) => book.id),
+    [props.books],
+  );
+  const allSelected =
+    allIds.length > 0 && allIds.every((id) => props.selectedIds.includes(id));
+  const someSelected =
+    !allSelected && allIds.some((id) => props.selectedIds.includes(id));
+  const [sorting, setSorting] = useState<SortingState>([]);
+
   const columns = useMemo(
     () => [
       columnHelper.display({
         id: "select",
-        header: () => <span className="text-xs">Pick</span>,
+        header: () => (
+          <RadixCheckbox
+            checked={allSelected ? true : someSelected ? "indeterminate" : false}
+            onCheckedChange={() => props.onToggleSelectAll(!allSelected)}
+            aria-label={allSelected ? "Deselect all" : "Select all"}
+          />
+        ),
         size: 42,
         cell: (ctx) => (
           <RadixCheckbox
@@ -51,6 +69,7 @@ export function TableView(props: Props) {
       columnHelper.accessor("coverImage", {
         header: "Cover",
         size: 76,
+        enableSorting: false,
         cell: (ctx) =>
           ctx.getValue() ? (
             <img
@@ -80,12 +99,7 @@ export function TableView(props: Props) {
       columnHelper.accessor("isFavorite", {
         header: "Favorite",
         size: 90,
-        cell: (ctx) =>
-          ctx.getValue() ? (
-            <Heart size={14} className="fill-amber-400 text-amber-500" />
-          ) : (
-            "No"
-          ),
+        cell: (ctx) => (ctx.getValue() ? "Yes" : "No"),
       }),
       columnHelper.accessor("readyToDonate", {
         header: "Donate",
@@ -101,6 +115,7 @@ export function TableView(props: Props) {
         id: "actions",
         header: "Actions",
         size: 120,
+        enableSorting: false,
         cell: (ctx) => (
           <div className="flex items-center gap-2">
             <button
@@ -129,6 +144,9 @@ export function TableView(props: Props) {
       props.onDeleteBook,
       props.onEditBook,
       props.onToggleSelect,
+      props.onToggleSelectAll,
+      allSelected,
+      someSelected,
     ],
   );
 
@@ -138,9 +156,12 @@ export function TableView(props: Props) {
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     columnResizeMode: "onChange",
+    sortDescFirst: false,
     state: {
       columnVisibility: props.columnVisibility,
+      sorting,
     },
+    onSortingChange: setSorting,
     onColumnVisibilityChange: props.onColumnVisibilityChange,
   });
 
@@ -258,20 +279,46 @@ export function TableView(props: Props) {
           <thead className="sticky top-0 z-20 bg-stone-100 dark:bg-stone-900">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    style={{ width: header.getSize() }}
-                    className="border-b border-stone-200 px-2 py-2 text-left font-medium text-stone-700 dark:border-stone-800 dark:text-stone-300"
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
-                  </th>
-                ))}
+                {headerGroup.headers.map((header) => {
+                  const canSort = header.column.getCanSort();
+                  const sortDir = header.column.getIsSorted();
+                  const headerContent = header.isPlaceholder
+                    ? null
+                    : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext(),
+                      );
+                  return (
+                    <th
+                      key={header.id}
+                      style={{ width: header.getSize() }}
+                      className="border-b border-stone-200 px-2 py-2 text-left font-medium text-stone-700 dark:border-stone-800 dark:text-stone-300"
+                    >
+                      {canSort ? (
+                        <button
+                          type="button"
+                          onClick={header.column.getToggleSortingHandler()}
+                          className="inline-flex items-center gap-1 hover:text-stone-900 dark:hover:text-stone-100"
+                          aria-label={`Sort by ${header.column.id}`}
+                        >
+                          {headerContent}
+                          {sortDir === "asc" ? (
+                            <ChevronUp size={12} />
+                          ) : sortDir === "desc" ? (
+                            <ChevronDown size={12} />
+                          ) : (
+                            <ChevronsUpDown
+                              size={12}
+                              className="text-stone-400"
+                            />
+                          )}
+                        </button>
+                      ) : (
+                        headerContent
+                      )}
+                    </th>
+                  );
+                })}
               </tr>
             ))}
           </thead>
