@@ -1,37 +1,29 @@
-import {
-  Eye,
-  EyeClosed,
-  EyeOff,
-  HandCoins,
-  Heart,
-  Pencil,
-  Trash2,
-} from "lucide-react";
+import { Eye, EyeClosed, EyeOff, Star } from "lucide-react";
 import type { Book } from "../features/books/types";
 import { writeShelfBookDrag } from "../utils/shelfDrag";
+import {
+  BookActionsMenu,
+  type BookActionsMenuHandlers,
+} from "./BookActionsMenu";
 
 type Props = {
   books: Book[];
   /** When dragging, if this book is selected in table view, move the whole selection */
   selectedIds: string[];
+  folderOptions: { id: string; name: string }[];
+  menuHandlers: BookActionsMenuHandlers;
   onOpenBook: (book: Book) => void;
-  onToggleFavorite: (book: Book) => void;
-  onToggleDonate: (book: Book) => void;
   onCycleStatus: (book: Book) => void;
-  onEditBook: (book: Book) => void;
-  onDeleteBook: (book: Book) => void;
   onContextMenu: (event: React.MouseEvent, book: Book) => void;
 };
 
 export function GalleryView({
   books,
   selectedIds,
+  folderOptions,
+  menuHandlers,
   onOpenBook,
-  onToggleFavorite,
-  onToggleDonate,
   onCycleStatus,
-  onEditBook,
-  onDeleteBook,
   onContextMenu,
 }: Props) {
   return (
@@ -66,7 +58,6 @@ export function GalleryView({
               }}
               className="group relative flex h-[19rem] flex-col rounded-xl border border-stone-200 bg-stone-50 p-2 shadow-sm transition hover:shadow-md dark:border-stone-800 dark:bg-stone-900"
               onClick={() => onOpenBook(book)}
-              onDoubleClick={() => onToggleFavorite(book)}
               onContextMenu={(event) => onContextMenu(event, book)}
               role="button"
               tabIndex={0}
@@ -126,69 +117,29 @@ export function GalleryView({
                   </p>
                 </div>
                 <div className="mt-auto flex items-center justify-between pt-1">
-                  <div className="flex shrink-0 items-center gap-1">
-                    <button
-                      type="button"
-                      className="rounded-md p-1 hover:bg-stone-200 dark:hover:bg-stone-800"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onEditBook(book);
-                      }}
-                      aria-label={`Edit ${book.title}`}
-                    >
-                      <Pencil size={14} className="text-stone-500" />
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-md p-1 hover:bg-stone-200 dark:hover:bg-stone-800"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onDeleteBook(book);
-                      }}
-                      aria-label={`Move ${book.title} to trash`}
-                      title="Move to trash"
-                    >
-                      <Trash2 size={14} className="text-stone-500" />
-                    </button>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-1">
-                    <button
-                      type="button"
-                      className="rounded-md p-1 hover:bg-stone-200 dark:hover:bg-stone-800"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onToggleDonate(book);
-                      }}
-                      aria-label={`Toggle donate for ${book.title}`}
-                    >
-                      <HandCoins
-                        size={14}
+                  <div
+                    className="flex shrink-0 items-center gap-0.5"
+                    aria-label={
+                      book.rating ? `Rated ${book.rating} of 5` : "Not rated"
+                    }
+                  >
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        size={13}
                         className={
-                          book.readyToDonate
-                            ? "fill-emerald-400 text-emerald-500"
-                            : "text-stone-400"
-                        }
-                      />
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-md p-1 hover:bg-stone-200 dark:hover:bg-stone-800"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onToggleFavorite(book);
-                      }}
-                      aria-label={`Toggle favorite for ${book.title}`}
-                    >
-                      <Heart
-                        size={14}
-                        className={
-                          book.isFavorite
+                          (book.rating ?? 0) >= star
                             ? "fill-amber-400 text-amber-500"
-                            : "text-stone-400"
+                            : "text-stone-300 dark:text-stone-600"
                         }
                       />
-                    </button>
+                    ))}
                   </div>
+                  <BookActionsMenu
+                    book={book}
+                    folderOptions={folderOptions}
+                    handlers={menuHandlers}
+                  />
                 </div>
               </div>
             </article>

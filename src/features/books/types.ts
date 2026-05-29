@@ -14,7 +14,6 @@ export type Book = {
   categories?: string[]
   tags?: string[]
   notes?: string
-  isFavorite: boolean
   readyToDonate: boolean
   rating?: number
   status?: ReadingStatus
@@ -48,10 +47,9 @@ export type SortMode =
   | 'title-asc'
   | 'author-asc'
   | 'rating-desc'
-  | 'favorites-first'
 
 export type QuickFilter =
-  | 'favorites'
+  | 'rated'
   | 'donate'
   | 'unread'
   | 'reading'

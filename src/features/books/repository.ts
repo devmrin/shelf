@@ -12,7 +12,7 @@ import { createId } from '../../utils/id'
 import { searchBooks } from './search'
 
 export type BookFilters = {
-  favorites?: boolean
+  rated?: boolean
   donate?: boolean
   statuses?: ReadingStatus[]
   categories?: string[]
@@ -32,7 +32,7 @@ export type DuplicateMatch = {
 
 export type CollectionStats = {
   total: number
-  favorites: number
+  rated: number
   donation: number
   reading: number
   completed: number
@@ -100,10 +100,6 @@ function sortBooks(books: Book[], sort: SortMode) {
     if (sort === 'title-asc') return a.title.localeCompare(b.title)
     if (sort === 'author-asc') return (a.author ?? '').localeCompare(b.author ?? '')
     if (sort === 'rating-desc') return (b.rating ?? 0) - (a.rating ?? 0)
-    if (sort === 'favorites-first') {
-      if (a.isFavorite !== b.isFavorite) return Number(b.isFavorite) - Number(a.isFavorite)
-      return b.updatedAt - a.updatedAt
-    }
     return b.createdAt - a.createdAt
   })
 
@@ -125,7 +121,6 @@ export async function addBook(input: BookDraft) {
     categories: input.categories ?? [],
     tags: input.tags ?? [],
     notes: input.notes,
-    isFavorite: Boolean(input.isFavorite),
     readyToDonate: Boolean(input.readyToDonate),
     rating: input.rating,
     status: input.status,
@@ -213,7 +208,7 @@ export async function queryBooks(params: {
 
   filtered = applyFolderScope(filtered, folderScope)
 
-  if (filters.favorites) filtered = filtered.filter((book) => book.isFavorite)
+  if (filters.rated) filtered = filtered.filter((book) => (book.rating ?? 0) > 0)
   if (filters.donate) filtered = filtered.filter((book) => book.readyToDonate)
   if (filters.statuses?.length) {
     filtered = filtered.filter((book) =>
@@ -280,7 +275,7 @@ export async function bulkEditBooks(
   patch: {
     addCategory?: string
     addTag?: string
-    favorite?: boolean
+    rating?: number
     donate?: boolean
     folderId?: string | null
   },
@@ -303,7 +298,7 @@ export async function bulkEditBooks(
       const changes: Partial<Book> & { updatedAt: number } = {
         categories: [...categories],
         tags: [...tags],
-        isFavorite: patch.favorite ?? book.isFavorite,
+        rating: patch.rating ?? book.rating,
         readyToDonate: patch.donate ?? book.readyToDonate,
         updatedAt: Date.now(),
       }
@@ -444,7 +439,7 @@ export async function collectionStats(): Promise<CollectionStats> {
 
   return {
     total: books.length,
-    favorites: books.filter((book) => book.isFavorite).length,
+    rated: books.filter((book) => (book.rating ?? 0) > 0).length,
     donation: books.filter((book) => book.readyToDonate).length,
     reading: books.filter((book) => (book.status ?? 'unread') === 'reading').length,
     completed: books.filter((book) => (book.status ?? 'unread') === 'completed').length,

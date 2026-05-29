@@ -1,10 +1,15 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Menu, Plus, Trash2 } from "lucide-react";
+import { Menu, Plus } from "lucide-react";
 import { Sidebar } from "../components/Sidebar";
 import { TopToolbar } from "../components/TopToolbar";
 import { GalleryView } from "../components/GalleryView";
+import {
+  BookContextMenu,
+  type BookActionsMenuHandlers,
+  type ContextMenuTarget,
+} from "../components/BookActionsMenu";
 import { TableView } from "../components/TableView";
 import { BookDetailDrawer } from "../components/BookDetailDrawer";
 import { EmptyState } from "../components/EmptyState";
@@ -95,7 +100,7 @@ function toFilters(
   if (quickFilters.includes("completed")) statuses.push("completed");
 
   return {
-    favorites: quickFilters.includes("favorites"),
+    rated: quickFilters.includes("rated"),
     donate: quickFilters.includes("donate"),
     hasImage: quickFilters.includes("has-image"),
     missingMetadata: quickFilters.includes("missing-metadata"),
@@ -109,11 +114,9 @@ export function ShelfPage() {
   const [search, setSearch] = useState("");
   const [activeBook, setActiveBook] = useState<Book | undefined>();
   const [editingBook, setEditingBook] = useState<Book | undefined>();
-  const [contextBook, setContextBook] = useState<Book | null>(null);
-  const [contextMenuPoint, setContextMenuPoint] = useState<{
-    x: number;
-    y: number;
-  } | null>(null);
+  const [contextTarget, setContextTarget] = useState<ContextMenuTarget | null>(
+    null,
+  );
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const [trashOpen, setTrashOpen] = useState(false);
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(
@@ -199,11 +202,11 @@ export function ShelfPage() {
 
   const stats = useLiveQuery(() => collectionStats(), [books.length], {
     total: 0,
-    favorites: 0,
+    rated: 0,
     donation: 0,
     reading: 0,
     completed: 0,
-  }) ?? { total: 0, favorites: 0, donation: 0, reading: 0, completed: 0 };
+  }) ?? { total: 0, rated: 0, donation: 0, reading: 0, completed: 0 };
 
   const trashedBooks = useLiveQuery(() => getTrashedBooks(), [], []) ?? [];
 
@@ -290,8 +293,7 @@ export function ShelfPage() {
   };
 
   const closeContextMenu = () => {
-    setContextBook(null);
-    setContextMenuPoint(null);
+    setContextTarget(null);
   };
 
   const cycleStatus = async (book: Book) => {
@@ -334,11 +336,32 @@ export function ShelfPage() {
     setPendingConfirm({ type: "softDelete", book });
   };
 
+  const menuHandlers: BookActionsMenuHandlers = {
+    onOpenBook: setActiveBook,
+    onEditBook: startEditing,
+    onSetRating: (book, rating) => {
+      void updateBook(book.id, { rating });
+      addToast({
+        message: rating
+          ? `${book.title} rated ${rating}/5`
+          : `${book.title} rating cleared`,
+      });
+    },
+    onToggleDonate: (book) => {
+      void updateBook(book.id, { readyToDonate: !book.readyToDonate });
+      addToast({ message: `${book.title} donate flag updated` });
+    },
+    onMoveToFolder: (book, folderId) => {
+      void relocateBooksToFolder([book.id], folderId);
+    },
+    onDeleteBook: requestSoftDelete,
+  };
+
   const runSoftDelete = async (book: Book) => {
     await softDeleteBooks([book.id]);
 
     if (activeBook?.id === book.id) setActiveBook(undefined);
-    if (contextBook?.id === book.id) closeContextMenu();
+    if (contextTarget?.book.id === book.id) closeContextMenu();
     if (editingBook?.id === book.id) setEditingBook(undefined);
 
     addToast({
@@ -401,7 +424,7 @@ export function ShelfPage() {
     await permanentlyDeleteBooks([book.id]);
 
     if (activeBook?.id === book.id) setActiveBook(undefined);
-    if (contextBook?.id === book.id) closeContextMenu();
+    if (contextTarget?.book.id === book.id) closeContextMenu();
     if (editingBook?.id === book.id) setEditingBook(undefined);
 
     addToast({ message: `${book.title} permanently deleted` });
@@ -425,7 +448,8 @@ export function ShelfPage() {
     await permanentlyDeleteBooks(ids);
 
     if (activeBook && ids.includes(activeBook.id)) setActiveBook(undefined);
-    if (contextBook && ids.includes(contextBook.id)) closeContextMenu();
+    if (contextTarget && ids.includes(contextTarget.book.id))
+      closeContextMenu();
     if (editingBook && ids.includes(editingBook.id)) setEditingBook(undefined);
 
     addToast({ message: `${ids.length} books permanently deleted` });
@@ -451,7 +475,7 @@ export function ShelfPage() {
 
   const quickFilterEmptyState = useMemo(() => {
     if (!quickFilters.length) return null;
-    if (quickFilters.includes("favorites")) return "No favorite books yet.";
+    if (quickFilters.includes("rated")) return "No rated books yet.";
     if (quickFilters.includes("donate")) return "No books in donation pile.";
     return "No books matched these filters.";
   }, [quickFilters]);
@@ -488,15 +512,6 @@ export function ShelfPage() {
     },
     g: () => setViewMode("gallery"),
     t: () => setViewMode("table"),
-    f: () => {
-      if (selectedIds.length === 1) {
-        const book = books.find((entry) => entry.id === selectedIds[0]);
-        if (book) {
-          void updateBook(book.id, { isFavorite: !book.isFavorite });
-          addToast({ message: `${book.title} favorite updated` });
-        }
-      }
-    },
     delete: () => {
       void deleteSelected();
     },
@@ -589,26 +604,22 @@ export function ShelfPage() {
               <GalleryView
                 books={books}
                 selectedIds={selectedIds}
+                folderOptions={folderRows.map((folder) => ({
+                  id: folder.id,
+                  name: folder.name,
+                }))}
+                menuHandlers={menuHandlers}
                 onOpenBook={setActiveBook}
-                onToggleFavorite={(book) => {
-                  void updateBook(book.id, { isFavorite: !book.isFavorite });
-                  addToast({ message: `${book.title} favorite updated` });
-                }}
-                onToggleDonate={(book) => {
-                  void updateBook(book.id, {
-                    readyToDonate: !book.readyToDonate,
-                  });
-                  addToast({ message: `${book.title} donate flag updated` });
-                }}
                 onCycleStatus={(book) => {
                   void cycleStatus(book);
                 }}
-                onEditBook={startEditing}
-                onDeleteBook={requestSoftDelete}
                 onContextMenu={(event, book) => {
                   event.preventDefault();
-                  setContextBook(book);
-                  setContextMenuPoint({ x: event.clientX, y: event.clientY });
+                  setContextTarget({
+                    book,
+                    x: event.clientX,
+                    y: event.clientY,
+                  });
                 }}
               />
             ) : (
@@ -627,9 +638,6 @@ export function ShelfPage() {
                 onEditBook={startEditing}
                 onDeleteBook={requestSoftDelete}
                 onBulkDelete={deleteSelected}
-                onBulkFavorite={() =>
-                  bulkEditBooks(selectedIds, { favorite: true })
-                }
                 onBulkDonate={() =>
                   bulkEditBooks(selectedIds, { donate: true })
                 }
@@ -711,86 +719,15 @@ export function ShelfPage() {
         </>
       ) : null}
 
-      {contextBook && contextMenuPoint ? (
-        <>
-          <div
-            role="presentation"
-            className="fixed inset-0 z-[51]"
-            aria-hidden
-            onClick={() => closeContextMenu()}
-          />
-          <div
-            className="fixed z-[52] max-h-[70vh] w-[min(16rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-stone-200 bg-stone-50 p-1 text-xs shadow-lg dark:border-stone-700 dark:bg-stone-900"
-            style={{
-              left: Math.min(contextMenuPoint.x, window.innerWidth - 236),
-              top: Math.min(contextMenuPoint.y, window.innerHeight - 280),
-            }}
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <button
-              type="button"
-              className="block w-full rounded-md px-2 py-1 text-left hover:bg-stone-100 dark:hover:bg-stone-800"
-              onClick={() => {
-                void updateBook(contextBook.id, {
-                  isFavorite: !contextBook.isFavorite,
-                });
-                closeContextMenu();
-              }}
-            >
-              Toggle Favorite
-            </button>
-            <button
-              type="button"
-              className="block w-full rounded-md px-2 py-1 text-left hover:bg-stone-100 dark:hover:bg-stone-800"
-              onClick={() => {
-                startEditing(contextBook);
-                closeContextMenu();
-              }}
-            >
-              Edit Book
-            </button>
-            <span className="my-1 block px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-stone-500 dark:text-stone-400">
-              Move to folder
-            </span>
-            <button
-              type="button"
-              className="block w-full rounded-md px-2 py-1 text-left hover:bg-stone-100 dark:hover:bg-stone-800"
-              onClick={() => {
-                void relocateBooksToFolder([contextBook.id], null).then(() =>
-                  closeContextMenu(),
-                );
-              }}
-            >
-              Uncategorized
-            </button>
-            {folderRows.map((folder) => (
-              <button
-                key={folder.id}
-                type="button"
-                className="block max-w-full truncate rounded-md px-2 py-1 text-left hover:bg-stone-100 dark:hover:bg-stone-800"
-                onClick={() => {
-                  void relocateBooksToFolder([contextBook.id], folder.id).then(
-                    () => closeContextMenu(),
-                  );
-                }}
-              >
-                {folder.name}
-              </button>
-            ))}
-            <button
-              type="button"
-              className="mt-1 inline-flex w-full items-center gap-2 rounded-md px-2 py-1 text-left hover:bg-stone-100 dark:hover:bg-stone-800"
-              onClick={() => {
-                setPendingConfirm({ type: "softDelete", book: contextBook });
-                closeContextMenu();
-              }}
-            >
-              <Trash2 size={13} className="shrink-0 text-stone-500" />
-              Move to trash
-            </button>
-          </div>
-        </>
-      ) : null}
+      <BookContextMenu
+        target={contextTarget}
+        folderOptions={folderRows.map((folder) => ({
+          id: folder.id,
+          name: folder.name,
+        }))}
+        handlers={menuHandlers}
+        onClose={closeContextMenu}
+      />
 
       <BookDetailDrawer
         book={activeBook}

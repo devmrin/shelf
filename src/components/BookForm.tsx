@@ -49,7 +49,6 @@ type FormValues = {
   rating?: number;
   status: "unread" | "reading" | "completed";
   readyToDonate: boolean;
-  isFavorite: boolean;
   folderIdSelect: string;
 };
 
@@ -83,7 +82,6 @@ function toFormValues(book?: Book, preferredFolderId?: string): FormValues {
     rating: book?.rating,
     status: book?.status ?? "unread",
     readyToDonate: book?.readyToDonate ?? false,
-    isFavorite: book?.isFavorite ?? false,
     folderIdSelect,
   };
 }
@@ -124,7 +122,6 @@ export function BookForm(props: Props) {
   const tags = watch("tags") ?? [];
   const rating = watch("rating");
   const status = watch("status");
-  const isFavorite = watch("isFavorite");
   const readyToDonate = watch("readyToDonate");
   const folderIdSelect = watch("folderIdSelect");
   const author = authors
@@ -212,7 +209,6 @@ export function BookForm(props: Props) {
               ? parsed.status
               : "unread",
           readyToDonate: Boolean(parsed.readyToDonate),
-          isFavorite: Boolean(parsed.isFavorite),
           folderIdSelect:
             typeof parsed.folderIdSelect === "string"
               ? parsed.folderIdSelect
@@ -646,16 +642,6 @@ export function BookForm(props: Props) {
             </div>
           </div>
           <div className="col-span-2 flex items-center gap-3 text-xs">
-            <label className="flex items-center gap-1 text-xs">
-              <RadixCheckbox
-                checked={isFavorite}
-                onCheckedChange={(checked) =>
-                  setValue("isFavorite", checked, { shouldDirty: true })
-                }
-                ariaLabel="Favorite"
-              />
-              Favorite
-            </label>
             <label className="flex items-center gap-1 text-xs">
               <RadixCheckbox
                 checked={readyToDonate}

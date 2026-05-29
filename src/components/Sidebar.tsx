@@ -59,8 +59,8 @@ export function Sidebar(props: Props) {
         <dl className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1 text-xs">
           <dt>Total</dt>
           <dd className="text-right tabular-nums">{props.stats.total}</dd>
-          <dt>Favorites</dt>
-          <dd className="text-right tabular-nums">{props.stats.favorites}</dd>
+          <dt>Rated</dt>
+          <dd className="text-right tabular-nums">{props.stats.rated}</dd>
           <dt>Donation</dt>
           <dd className="text-right tabular-nums">{props.stats.donation}</dd>
           <dt>Reading</dt>

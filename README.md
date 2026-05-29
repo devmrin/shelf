@@ -34,7 +34,9 @@ pnpm preview
 Shelf uses one Dexie database named `shelf-db` with these tables:
 
 - `books`
-  - schema: `id, title, author, isbn, *categories, *tags, isFavorite, readyToDonate, status, createdAt, updatedAt, deletedAt`
+  - schema: `id, title, author, isbn, *categories, *tags, readyToDonate, status, folderId, createdAt, updatedAt, deletedAt`
+- `folders`
+  - schema: `id, name, sortOrder, createdAt, updatedAt`
 - `categories`
   - schema: `id, value, createdAt`
 - `tags`
@@ -89,7 +91,6 @@ src/
 - `n` focus new book input / open drawer on mobile
 - `g` gallery view
 - `t` table view
-- `f` toggle favorite for single selected row
 - `Delete` move selected books to trash
 
 ## Notes

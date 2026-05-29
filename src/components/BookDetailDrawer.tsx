@@ -131,14 +131,14 @@ export function BookDetailDrawer({ book, onClose, onEdit, onDelete }: Props) {
                 </div>
                 {book.author ? (
                   <div className="mt-0.5 flex flex-wrap items-center gap-x-1 text-sm text-stone-600 dark:text-stone-300">
-                    {splitNames(book.author).map((name, index) => (
+                    {splitNames(book.author).map((name, index, names) => (
                       <span
                         key={`${name}-${index}`}
                         className="group inline-flex items-center gap-0.5"
                       >
                         <span>{name}</span>
                         <CopyButton value={name} label="author name" />
-                        {index < splitNames(book.author).length - 1 ? (
+                        {index < names.length - 1 ? (
                           <span className="text-stone-400">,</span>
                         ) : null}
                       </span>
@@ -215,22 +215,6 @@ export function BookDetailDrawer({ book, onClose, onEdit, onDelete }: Props) {
                 <dt className="text-stone-500 dark:text-stone-400">Status</dt>
                 <dd className="capitalize text-stone-900 dark:text-stone-100">
                   {book.status ?? "unread"}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-stone-500 dark:text-stone-400">Favorite</dt>
-                <dd className="text-stone-900 dark:text-stone-100">
-                  {book.isFavorite ? (
-                    <span className="inline-flex items-center gap-1">
-                      <Star
-                        size={14}
-                        className="fill-amber-400 text-amber-500"
-                      />
-                      Yes
-                    </span>
-                  ) : (
-                    "No"
-                  )}
                 </dd>
               </div>
               <div>

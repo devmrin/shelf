@@ -39,7 +39,7 @@ type Props = {
 };
 
 const QUICK_FILTERS: QuickFilter[] = [
-  "favorites",
+  "rated",
   "donate",
   "unread",
   "reading",
@@ -78,7 +78,6 @@ export function TopToolbar(props: Props) {
               { value: "title-asc", label: "Title A-Z" },
               { value: "author-asc", label: "Author A-Z" },
               { value: "rating-desc", label: "Rating" },
-              { value: "favorites-first", label: "Favorites First" },
             ]}
           />
 

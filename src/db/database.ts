@@ -53,6 +53,25 @@ class ShelfDatabase extends Dexie {
       settings: 'key, updatedAt',
       drafts: 'key, updatedAt',
     })
+    // v3: drop the `isFavorite` boolean in favor of `rating`.
+    this.version(3)
+      .stores({
+        books:
+          'id, title, author, isbn, *categories, *tags, readyToDonate, status, folderId, createdAt, updatedAt, deletedAt',
+        folders: 'id, name, sortOrder, createdAt, updatedAt',
+        categories: 'id, value, createdAt',
+        tags: 'id, value, createdAt',
+        settings: 'key, updatedAt',
+        drafts: 'key, updatedAt',
+      })
+      .upgrade((tx) =>
+        tx
+          .table('books')
+          .toCollection()
+          .modify((book: Record<string, unknown>) => {
+            delete book.isFavorite
+          }),
+      )
   }
 }
 

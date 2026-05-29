@@ -24,7 +24,6 @@ type Props = {
   onEditBook: (book: Book) => void;
   onDeleteBook: (book: Book) => void;
   onBulkDelete: () => Promise<void>;
-  onBulkFavorite: () => Promise<void>;
   onBulkDonate: () => Promise<void>;
   onBulkAddCategory: (value: string) => Promise<void>;
   onBulkAddTag: (value: string) => Promise<void>;
@@ -96,10 +95,14 @@ export function TableView(props: Props) {
           <span className="capitalize">{ctx.getValue() ?? "unread"}</span>
         ),
       }),
-      columnHelper.accessor("isFavorite", {
-        header: "Favorite",
+      columnHelper.accessor((book) => book.rating ?? 0, {
+        id: "rating",
+        header: "Rating",
         size: 90,
-        cell: (ctx) => (ctx.getValue() ? "Yes" : "No"),
+        cell: (ctx) => {
+          const value = ctx.getValue();
+          return value ? `${value}/5` : "-";
+        },
       }),
       columnHelper.accessor("readyToDonate", {
         header: "Donate",
@@ -203,13 +206,6 @@ export function TableView(props: Props) {
               Bulk Actions ({selectedCount})
             </h3>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-6">
-              <button
-                className="rounded-md border border-stone-300 px-2 py-1 hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
-                type="button"
-                onClick={() => void props.onBulkFavorite()}
-              >
-                Favorite
-              </button>
               <button
                 className="rounded-md border border-stone-300 px-2 py-1 hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"
                 type="button"
