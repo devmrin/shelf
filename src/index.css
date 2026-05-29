@@ -21,6 +21,17 @@
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  height: 100%;
+}
+
+html,
+body {
+  overflow: hidden;
+}
+
 body {
   margin: 0;
   background: #f5f5f4;
