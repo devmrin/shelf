@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { Pencil, Star, Trash2, X } from "lucide-react";
+import { Check, Copy, Pencil, Star, Trash2, X } from "lucide-react";
+import { useState } from "react";
 import type { Book } from "../features/books/types";
 
 type Props = {
@@ -8,6 +9,87 @@ type Props = {
   onEdit: (book: Book) => void;
   onDelete: (book: Book) => void;
 };
+
+function splitNames(value: string): string[] {
+  return value
+    .split(/\s*(?:,|&|;|\band\b)\s*/i)
+    .map((name) => name.trim())
+    .filter(Boolean);
+}
+
+function CopyChip({ value, label }: { value: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1200);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className="inline-flex items-center gap-1 rounded-full bg-stone-200 px-2 py-0.5 text-xs text-stone-700 transition hover:bg-stone-300 dark:bg-stone-800 dark:text-stone-300 dark:hover:bg-stone-700"
+      aria-label={`Copy ${label} ${value}`}
+      title={`Copy ${label}`}
+    >
+      {value}
+      {copied ? (
+        <Check size={11} className="text-emerald-500" />
+      ) : (
+        <Copy size={11} className="opacity-60" />
+      )}
+    </button>
+  );
+}
+
+function CopyButton({
+  value,
+  label,
+  variant = "inline",
+}: {
+  value: string;
+  label: string;
+  variant?: "inline" | "overlay";
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1200);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  const className =
+    variant === "overlay"
+      ? "inline-flex shrink-0 items-center rounded p-1 text-white/80 transition hover:text-white"
+      : "inline-flex shrink-0 items-center rounded p-0.5 text-stone-400 opacity-0 transition hover:bg-stone-200 hover:text-stone-700 group-hover:opacity-100 dark:hover:bg-stone-800 dark:hover:text-stone-200";
+
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      className={className}
+      aria-label={`Copy ${label}`}
+      title={`Copy ${label}`}
+    >
+      {copied ? (
+        <Check size={13} className="text-emerald-400" />
+      ) : (
+        <Copy size={13} />
+      )}
+    </button>
+  );
+}
 
 export function BookDetailDrawer({ book, onClose, onEdit, onDelete }: Props) {
   const hasPublisher = Boolean(book?.publisher?.trim());
@@ -39,12 +121,34 @@ export function BookDetailDrawer({ book, onClose, onEdit, onDelete }: Props) {
           >
             <div className="mb-4 flex items-start justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-stone-900 dark:text-stone-100">
-                  {book.title}
-                </h2>
-                <p className="text-sm text-stone-600 dark:text-stone-300">
-                  {book.author || "Unknown author"}
-                </p>
+                <div className="group flex items-start gap-1.5">
+                  <h2 className="text-xl font-semibold text-stone-900 dark:text-stone-100">
+                    {book.title}
+                  </h2>
+                  <span className="mt-1.5">
+                    <CopyButton value={book.title} label="book name" />
+                  </span>
+                </div>
+                {book.author ? (
+                  <div className="mt-0.5 flex flex-wrap items-center gap-x-1 text-sm text-stone-600 dark:text-stone-300">
+                    {splitNames(book.author).map((name, index) => (
+                      <span
+                        key={`${name}-${index}`}
+                        className="group inline-flex items-center gap-0.5"
+                      >
+                        <span>{name}</span>
+                        <CopyButton value={name} label="author name" />
+                        {index < splitNames(book.author).length - 1 ? (
+                          <span className="text-stone-400">,</span>
+                        ) : null}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-stone-600 dark:text-stone-300">
+                    Unknown author
+                  </p>
+                )}
               </div>
               <button
                 type="button"
@@ -56,12 +160,21 @@ export function BookDetailDrawer({ book, onClose, onEdit, onDelete }: Props) {
             </div>
 
             {book.coverImage ? (
-              <img
-                src={book.coverImage}
-                alt={`${book.title} cover`}
-                className="mb-4 aspect-[3/4] w-full rounded-xl object-cover"
-                loading="lazy"
-              />
+              <div className="group relative mb-4">
+                <img
+                  src={book.coverImage}
+                  alt={`${book.title} cover`}
+                  className="aspect-[3/4] w-full rounded-xl object-cover"
+                  loading="lazy"
+                />
+                <div className="absolute right-2 top-2 rounded-md bg-black/40 opacity-0 backdrop-blur transition group-hover:opacity-100">
+                  <CopyButton
+                    value={book.coverImage}
+                    label="cover image"
+                    variant="overlay"
+                  />
+                </div>
+              </div>
             ) : null}
 
             {book.additionalImages?.length ? (
@@ -136,12 +249,13 @@ export function BookDetailDrawer({ book, onClose, onEdit, onDelete }: Props) {
                 </div>
               ) : null}
               {hasPublisher ? (
-                <div>
+                <div className="group">
                   <dt className="text-stone-500 dark:text-stone-400">
                     Publisher
                   </dt>
-                  <dd className="text-stone-900 dark:text-stone-100">
-                    {book.publisher}
+                  <dd className="flex items-center gap-1 text-stone-900 dark:text-stone-100">
+                    <span>{book.publisher}</span>
+                    <CopyButton value={book.publisher!} label="publisher" />
                   </dd>
                 </div>
               ) : null}
@@ -154,10 +268,11 @@ export function BookDetailDrawer({ book, onClose, onEdit, onDelete }: Props) {
                 </div>
               ) : null}
               {hasIsbn ? (
-                <div className="col-span-2">
+                <div className="group col-span-2">
                   <dt className="text-stone-500 dark:text-stone-400">ISBN</dt>
-                  <dd className="break-all text-stone-900 dark:text-stone-100">
-                    {book.isbn}
+                  <dd className="flex items-center gap-1 break-all text-stone-900 dark:text-stone-100">
+                    <span>{book.isbn}</span>
+                    <CopyButton value={book.isbn!} label="ISBN" />
                   </dd>
                 </div>
               ) : null}
@@ -168,12 +283,11 @@ export function BookDetailDrawer({ book, onClose, onEdit, onDelete }: Props) {
                   </dt>
                   <dd className="mt-1 flex flex-wrap gap-1">
                     {book.categories?.map((category) => (
-                      <span
+                      <CopyChip
                         key={category}
-                        className="rounded-full bg-stone-200 px-2 py-0.5 text-xs text-stone-700 dark:bg-stone-800 dark:text-stone-300"
-                      >
-                        {category}
-                      </span>
+                        value={category}
+                        label="category"
+                      />
                     ))}
                   </dd>
                 </div>
@@ -183,12 +297,7 @@ export function BookDetailDrawer({ book, onClose, onEdit, onDelete }: Props) {
                   <dt className="text-stone-500 dark:text-stone-400">Tags</dt>
                   <dd className="mt-1 flex flex-wrap gap-1">
                     {book.tags?.map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-full bg-stone-200 px-2 py-0.5 text-xs text-stone-700 dark:bg-stone-800 dark:text-stone-300"
-                      >
-                        {tag}
-                      </span>
+                      <CopyChip key={tag} value={tag} label="tag" />
                     ))}
                   </dd>
                 </div>

@@ -36,7 +36,7 @@ export function GalleryView({
 }: Props) {
   return (
     <div className="h-full min-h-0 overflow-auto px-3 py-3 sm:px-4">
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(185px,1fr))] gap-3">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(185px,1fr))] items-start gap-3">
         {books.map((book) => {
           const status = book.status ?? "unread";
 
@@ -64,7 +64,7 @@ export function GalleryView({
                   : [book.id];
                 writeShelfBookDrag(event.dataTransfer, ids);
               }}
-              className="group relative rounded-xl border border-stone-200 bg-stone-50 p-2 shadow-sm transition hover:shadow-md dark:border-stone-800 dark:bg-stone-900"
+              className="group relative flex h-[19rem] flex-col rounded-xl border border-stone-200 bg-stone-50 p-2 shadow-sm transition hover:shadow-md dark:border-stone-800 dark:bg-stone-900"
               onClick={() => onOpenBook(book)}
               onDoubleClick={() => onToggleFavorite(book)}
               onContextMenu={(event) => onContextMenu(event, book)}
@@ -105,36 +105,28 @@ export function GalleryView({
                 <img
                   src={book.coverImage}
                   alt={`${book.title} cover`}
-                  className="aspect-[3/4] h-32 w-full rounded-lg object-cover"
+                  className="h-44 w-full shrink-0 rounded-lg object-cover"
                   loading="lazy"
                 />
               ) : (
                 <div
-                  className={`relative flex aspect-[3/4] h-32 w-full flex-col justify-between overflow-hidden rounded-lg border bg-[linear-gradient(145deg,#f5f5f4_0%,#e7e5e4_100%)] p-2 dark:bg-[linear-gradient(145deg,#292524_0%,#1c1917_100%)] ${binderBorderClass}`}
+                  className={`relative h-44 w-full shrink-0 overflow-hidden rounded-lg border bg-[linear-gradient(145deg,#f5f5f4_0%,#e7e5e4_100%)] dark:bg-[linear-gradient(145deg,#292524_0%,#1c1917_100%)] ${binderBorderClass}`}
                 >
                   <div
                     className={`absolute inset-y-0 left-0 w-1 ${binderSpineClass}`}
                   />
-                  <p className="line-clamp-3 pl-2 pr-1 text-[11px] font-semibold leading-tight text-stone-800 dark:text-stone-100">
+                </div>
+              )}
+              <div className="mt-2 flex min-h-0 flex-1 flex-col">
+                <div className="min-w-0">
+                  <h3 className="truncate text-sm font-medium text-stone-900 dark:text-stone-100">
                     {book.title}
-                  </p>
-                  <p className="overflow-hidden pl-2 pr-1 text-[10px] leading-tight text-stone-600 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] dark:text-stone-300">
+                  </h3>
+                  <p className="overflow-hidden text-xs leading-tight text-stone-600 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:3] dark:text-stone-300">
                     {book.author || "Unknown author"}
                   </p>
                 </div>
-              )}
-              <div className="mt-2">
-                {book.coverImage ? (
-                  <div className="min-w-0">
-                    <h3 className="truncate text-sm font-medium text-stone-900 dark:text-stone-100">
-                      {book.title}
-                    </h3>
-                    <p className="overflow-hidden text-xs leading-tight text-stone-600 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] dark:text-stone-300">
-                      {book.author || "Unknown author"}
-                    </p>
-                  </div>
-                ) : null}
-                <div className="mt-1 flex items-center justify-between">
+                <div className="mt-auto flex items-center justify-between pt-1">
                   <div className="flex shrink-0 items-center gap-1">
                     <button
                       type="button"
