@@ -79,7 +79,7 @@ export function TrashDialog({
             </div>
           ) : null}
 
-          <div className="max-h-[60vh] overflow-y-auto px-4 py-3 sm:px-5">
+          <div className="shelf-scroll max-h-[60vh] overflow-y-auto px-4 py-3 sm:px-5">
             {!hasBooks ? (
               <div className="rounded-xl border border-dashed border-stone-300 px-4 py-8 text-center text-sm text-stone-600 dark:border-stone-700 dark:text-stone-300">
                 Trash is empty.

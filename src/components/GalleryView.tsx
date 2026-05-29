@@ -35,7 +35,7 @@ export function GalleryView({
   onContextMenu,
 }: Props) {
   return (
-    <div className="h-full min-h-0 overflow-auto px-3 py-3 sm:px-4">
+    <div className="shelf-scroll shelf-scroll-gutter h-full min-h-0 overflow-auto px-3 py-3 sm:px-4">
       <div className="grid grid-cols-[repeat(auto-fill,minmax(185px,1fr))] items-start gap-3">
         {books.map((book) => {
           const status = book.status ?? "unread";
@@ -76,13 +76,12 @@ export function GalleryView({
             >
               <button
                 type="button"
-                className={`absolute right-2 top-2 z-10 rounded-md border p-1 backdrop-blur transition hover:scale-[1.04] ${
-                  status === "reading"
+                className={`absolute right-2 top-2 z-10 rounded-md border p-1 backdrop-blur transition hover:scale-[1.04] ${status === "reading"
                     ? "border-amber-200 bg-amber-50/90 text-amber-700 dark:border-amber-500/50 dark:bg-amber-400/10 dark:text-amber-300"
                     : status === "completed"
                       ? "border-emerald-200 bg-emerald-50/90 text-emerald-700 dark:border-emerald-500/50 dark:bg-emerald-400/10 dark:text-emerald-300"
                       : "border-stone-300 bg-stone-100/90 text-stone-600 dark:border-stone-700 dark:bg-stone-900/85 dark:text-stone-300"
-                }`}
+                  }`}
                 onClick={(event) => {
                   event.stopPropagation();
                   onCycleStatus(book);

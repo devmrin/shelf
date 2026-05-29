@@ -32,7 +32,7 @@ type Props = {
 
 export function Sidebar(props: Props) {
   return (
-    <aside className="flex h-full flex-col gap-3 overflow-y-auto border-r border-stone-200 bg-stone-100 p-3 dark:border-stone-800 dark:bg-stone-950">
+    <aside className="shelf-scroll shelf-scroll-gutter flex h-full flex-col gap-3 overflow-y-auto border-r border-stone-200 bg-stone-100 p-3 dark:border-stone-800 dark:bg-stone-950">
       <BookForm
         key={props.editingBook?.id ?? "new-book"}
         onSave={props.onSave}

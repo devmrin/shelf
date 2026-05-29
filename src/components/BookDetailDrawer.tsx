@@ -117,7 +117,7 @@ export function BookDetailDrawer({ book, onClose, onEdit, onDelete }: Props) {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: 32, opacity: 0 }}
             transition={{ duration: 0.16 }}
-            className="fixed right-0 top-0 z-50 h-full w-full max-w-md overflow-y-auto border-l border-stone-200 bg-stone-100 p-4 dark:border-stone-700 dark:bg-stone-900"
+            className="shelf-scroll fixed right-0 top-0 z-50 h-full w-full max-w-md overflow-y-auto border-l border-stone-200 bg-stone-100 p-4 dark:border-stone-700 dark:bg-stone-900"
           >
             <div className="mb-4 flex items-start justify-between">
               <div>

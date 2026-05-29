@@ -274,7 +274,7 @@ export function TableView(props: Props) {
         ) : null}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-stone-200 dark:border-stone-800">
+      <div className="shelf-scroll min-h-0 flex-1 overflow-auto rounded-xl border border-stone-200 dark:border-stone-800">
         <table className="w-full table-fixed border-collapse text-sm">
           <thead className="sticky top-0 z-20 bg-stone-100 dark:bg-stone-900">
             {table.getHeaderGroups().map((headerGroup) => (
