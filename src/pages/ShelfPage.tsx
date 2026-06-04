@@ -543,6 +543,7 @@ export function ShelfPage() {
               editingBook={editingBook}
               onCancelEdit={() => setEditingBook(undefined)}
               prefill={prefillDraft}
+              onResetForm={() => setPrefillDraft(undefined)}
               stats={stats}
               {...sidebarFolderNavProps}
             />
@@ -712,6 +713,7 @@ export function ShelfPage() {
                 editingBook={editingBook}
                 onCancelEdit={() => setEditingBook(undefined)}
                 prefill={prefillDraft}
+                onResetForm={() => setPrefillDraft(undefined)}
                 stats={stats}
                 {...sidebarFolderNavProps}
               />

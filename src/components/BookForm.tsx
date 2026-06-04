@@ -7,6 +7,7 @@ import {
   Clipboard,
   ImagePlus,
   Plus,
+  RotateCcw,
   Star,
   X,
 } from "lucide-react";
@@ -37,6 +38,8 @@ type Props = {
   preferredFolderId?: string;
   /** Metadata from Open Library web search or barcode scan */
   prefill?: BookDraft;
+  /** Called when the user clears the add form (e.g. to drop Open Library prefill) */
+  onReset?: () => void;
 };
 
 type FormValues = {
@@ -113,7 +116,7 @@ export function BookForm(props: Props) {
   const canReadClipboard = useMemo(() => clipboardImageReadSupported(), []);
   const coverInputId = "book-cover-upload";
 
-  const { register, handleSubmit, watch, reset, setValue } =
+  const { register, handleSubmit, watch, reset, setValue, formState } =
     useForm<FormValues>({
       defaultValues: toFormValues(
         props.editingBook,
@@ -319,6 +322,63 @@ export function BookForm(props: Props) {
 
   const canSave = useMemo(() => title.trim().length > 0, [title]);
 
+  const defaultFolderId =
+    props.preferredFolderId && props.preferredFolderId.length > 0
+      ? props.preferredFolderId
+      : FOLDER_NONE;
+
+  const hasContent = useMemo(() => {
+    if (props.editingBook) {
+      return formState.isDirty;
+    }
+
+    const snapshot = formSnapshot;
+    return Boolean(
+      title.trim() ||
+        author.trim() ||
+        snapshot.isbn.trim() ||
+        snapshot.publisher.trim() ||
+        snapshot.publishedYear.trim() ||
+        snapshot.notes.trim() ||
+        snapshot.categories.length ||
+        snapshot.tags.length ||
+        snapshot.rating ||
+        snapshot.readyToDonate ||
+        snapshot.status !== "unread" ||
+        snapshot.folderIdSelect !== defaultFolderId ||
+        coverImage ||
+        additionalImages.length,
+    );
+  }, [
+    props.editingBook,
+    formState.isDirty,
+    formSnapshot,
+    title,
+    author,
+    coverImage,
+    additionalImages.length,
+    defaultFolderId,
+  ]);
+
+  const resetForm = () => {
+    if (props.editingBook) {
+      reset(toFormValues(props.editingBook, props.preferredFolderId));
+      setCoverImage(props.editingBook.coverImage);
+      setAdditionalImages(props.editingBook.additionalImages ?? []);
+      setDuplicates([]);
+      setPasteStatus(null);
+      return;
+    }
+
+    reset(toFormValues(undefined, props.preferredFolderId));
+    setCoverImage(undefined);
+    setAdditionalImages([]);
+    setDuplicates([]);
+    setPasteStatus(null);
+    void clearDraft(DRAFT_KEY);
+    props.onReset?.();
+  };
+
   const folderSelectOptions = useMemo(
     () => [
       { value: FOLDER_NONE, label: "Uncategorized" },
@@ -403,10 +463,21 @@ export function BookForm(props: Props) {
         if (files.length) void addImageFiles(files);
       }}
     >
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-stone-800 dark:text-stone-200">
           {props.editingBook ? "Edit Book" : "Add Book"}
         </h3>
+        {hasContent ? (
+          <button
+            type="button"
+            onClick={resetForm}
+            className="inline-flex shrink-0 items-center gap-1 rounded-md border border-stone-300 px-2 py-1 text-[11px] font-medium text-stone-600 hover:bg-stone-100 dark:border-stone-700 dark:text-stone-300 dark:hover:bg-stone-800"
+            aria-label={props.editingBook ? "Revert changes" : "Clear form"}
+          >
+            <RotateCcw size={12} />
+            {props.editingBook ? "Revert" : "Clear"}
+          </button>
+        ) : null}
       </div>
 
       <input

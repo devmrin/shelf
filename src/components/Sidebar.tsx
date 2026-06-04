@@ -18,6 +18,7 @@ type Props = {
   onCancelEdit?: () => void;
   preferredFolderId?: string;
   prefill?: BookDraft;
+  onResetForm?: () => void;
   folders: FolderWithCounts[];
   uncategorizedCount: number;
   activeFolderId: ActiveFolderId;
@@ -46,6 +47,7 @@ export function Sidebar(props: Props) {
         onCancelEdit={props.onCancelEdit}
         preferredFolderId={props.preferredFolderId}
         prefill={props.prefill}
+        onReset={props.onResetForm}
       />
 
       <FolderNav
