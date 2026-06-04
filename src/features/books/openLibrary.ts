@@ -4,6 +4,7 @@ import { optimizeImage } from "../../utils/image";
 export type OpenLibraryResult = {
   key?: string;
   title: string;
+  subtitle?: string;
   author_name?: string[];
   first_publish_year?: number;
   isbn?: string[];
@@ -11,35 +12,93 @@ export type OpenLibraryResult = {
   publisher?: string[];
 };
 
+type EditionDoc = {
+  key?: string;
+  title?: string;
+  subtitle?: string;
+  cover_i?: number;
+};
+
 type SearchDoc = {
   key?: string;
   title?: string;
+  subtitle?: string;
+  name?: string;
   author_name?: string[];
   first_publish_year?: number;
   isbn?: string[];
   cover_i?: number;
   publisher?: string[];
+  editions?: {
+    docs?: EditionDoc[];
+  };
 };
 
 type SearchResponse = {
   docs?: SearchDoc[];
 };
 
+/** Matches Open Library site search (edition titles for ISBN / work queries). */
 const SEARCH_FIELDS =
-  "key,title,author_name,first_publish_year,isbn,cover_i,publisher";
+  "key,cover_i,title,subtitle,author_name,first_publish_year,isbn,editions,publisher";
+
+function pickPrimaryEdition(doc: SearchDoc): EditionDoc | undefined {
+  const editions = doc.editions?.docs;
+  if (!editions?.length) return undefined;
+  return editions.find((entry) => entry.title?.trim()) ?? editions[0];
+}
+
+function joinTitleAndSubtitle(title: string, subtitle?: string): string {
+  const trimmedSubtitle = subtitle?.trim();
+  if (!trimmedSubtitle) return title;
+  return `${title}: ${trimmedSubtitle}`;
+}
+
+/** Prefer edition title (e.g. English) over canonical work title (often another language). */
+function resolveTitle(doc: SearchDoc, edition?: EditionDoc): string | null {
+  if (edition?.title?.trim()) {
+    return joinTitleAndSubtitle(edition.title.trim(), edition.subtitle);
+  }
+
+  const workTitle = doc.title?.trim();
+  if (workTitle) {
+    return joinTitleAndSubtitle(workTitle, doc.subtitle);
+  }
+
+  return doc.name?.trim() ?? null;
+}
 
 function normalizeDoc(doc: SearchDoc): OpenLibraryResult | null {
-  const title = doc.title?.trim();
+  const edition = pickPrimaryEdition(doc);
+  const title = resolveTitle(doc, edition);
   if (!title) return null;
+
+  const subtitle = edition?.subtitle?.trim() ?? doc.subtitle?.trim();
+
   return {
-    key: doc.key,
+    key: edition?.key ?? doc.key,
     title,
+    subtitle: subtitle || undefined,
     author_name: doc.author_name,
     first_publish_year: doc.first_publish_year,
     isbn: doc.isbn,
-    cover_i: doc.cover_i,
+    cover_i: edition?.cover_i ?? doc.cover_i,
     publisher: doc.publisher,
   };
+}
+
+function buildSearchUrl(
+  params: Record<string, string>,
+  options?: { limit?: number; signal?: AbortSignal },
+): URL {
+  const url = new URL("https://openlibrary.org/search.json");
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
+  url.searchParams.set("limit", String(options?.limit ?? 10));
+  url.searchParams.set("fields", SEARCH_FIELDS);
+  url.searchParams.set("mode", "everything");
+  return url;
 }
 
 export function normalizeIsbn(raw: string): string {
@@ -85,18 +144,11 @@ async function fetchCoverDataUrl(
   }
 }
 
-export async function searchOpenLibrary(
-  query: string,
+async function fetchSearch(
+  params: Record<string, string>,
   options?: { limit?: number; signal?: AbortSignal },
 ): Promise<OpenLibraryResult[]> {
-  const trimmed = query.trim();
-  if (!trimmed) return [];
-
-  const url = new URL("https://openlibrary.org/search.json");
-  url.searchParams.set("q", trimmed);
-  url.searchParams.set("limit", String(options?.limit ?? 10));
-  url.searchParams.set("fields", SEARCH_FIELDS);
-
+  const url = buildSearchUrl(params, options);
   const response = await fetch(url, { signal: options?.signal });
   if (!response.ok) {
     throw new Error(`Open Library search failed (${response.status})`);
@@ -108,6 +160,15 @@ export async function searchOpenLibrary(
     .filter((entry): entry is OpenLibraryResult => entry !== null);
 }
 
+export async function searchOpenLibrary(
+  query: string,
+  options?: { limit?: number; signal?: AbortSignal },
+): Promise<OpenLibraryResult[]> {
+  const trimmed = query.trim();
+  if (!trimmed) return [];
+  return fetchSearch({ q: trimmed }, options);
+}
+
 export async function lookupIsbn(
   rawIsbn: string,
   signal?: AbortSignal,
@@ -115,20 +176,8 @@ export async function lookupIsbn(
   const isbn = normalizeIsbn(rawIsbn);
   if (!isbn) return null;
 
-  const url = new URL("https://openlibrary.org/search.json");
-  url.searchParams.set("isbn", isbn);
-  url.searchParams.set("limit", "1");
-  url.searchParams.set("fields", SEARCH_FIELDS);
-
-  const response = await fetch(url, { signal });
-  if (!response.ok) {
-    throw new Error(`Open Library ISBN lookup failed (${response.status})`);
-  }
-
-  const data = (await response.json()) as SearchResponse;
-  const doc = data.docs?.[0];
-  if (!doc) return null;
-  const result = normalizeDoc(doc);
+  const results = await fetchSearch({ q: isbn }, { limit: 1, signal });
+  const result = results[0];
   if (!result) return null;
   return {
     ...result,
