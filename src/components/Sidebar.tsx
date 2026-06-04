@@ -17,6 +17,7 @@ type Props = {
   editingBook?: Book;
   onCancelEdit?: () => void;
   preferredFolderId?: string;
+  prefill?: BookDraft;
   folders: FolderWithCounts[];
   uncategorizedCount: number;
   activeFolderId: ActiveFolderId;
@@ -34,11 +35,17 @@ export function Sidebar(props: Props) {
   return (
     <aside className="shelf-scroll shelf-scroll-gutter flex h-full flex-col gap-3 overflow-y-auto border-r border-stone-200 bg-stone-100 p-3 dark:border-stone-800 dark:bg-stone-950">
       <BookForm
-        key={props.editingBook?.id ?? "new-book"}
+        key={
+          props.editingBook?.id ??
+          (props.prefill
+            ? `prefill-${props.prefill.title}-${props.prefill.isbn ?? ""}`
+            : "new-book")
+        }
         onSave={props.onSave}
         editingBook={props.editingBook}
         onCancelEdit={props.onCancelEdit}
         preferredFolderId={props.preferredFolderId}
+        prefill={props.prefill}
       />
 
       <FolderNav

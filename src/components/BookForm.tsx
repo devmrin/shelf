@@ -35,6 +35,8 @@ type Props = {
   onCancelEdit?: () => void;
   /** When adding a book, default folder (folder id) from the current shelf scope */
   preferredFolderId?: string;
+  /** Metadata from Open Library web search or barcode scan */
+  prefill?: BookDraft;
 };
 
 type FormValues = {
@@ -57,8 +59,13 @@ const DRAFT_KEY = "book-form-draft";
 /** Radix Select cannot use empty string as a value */
 const FOLDER_NONE = "__uncategorized__";
 
-function toFormValues(book?: Book, preferredFolderId?: string): FormValues {
-  const authorList = (book?.author ?? "")
+function toFormValues(
+  book?: Book,
+  preferredFolderId?: string,
+  draft?: BookDraft,
+): FormValues {
+  const source = book ?? draft;
+  const authorList = (source?.author ?? "")
     .split(",")
     .map((entry) => entry.trim())
     .filter(Boolean);
@@ -70,18 +77,20 @@ function toFormValues(book?: Book, preferredFolderId?: string): FormValues {
       : FOLDER_NONE;
 
   return {
-    title: book?.title ?? "",
+    title: source?.title ?? "",
     authors: authorList.length ? authorList : [""],
-    isbn: book?.isbn ?? "",
-    publisher: book?.publisher ?? "",
+    isbn: source?.isbn ?? "",
+    publisher: source?.publisher ?? "",
     publishedYear:
-      typeof book?.publishedYear === "number" ? String(book.publishedYear) : "",
-    categories: book?.categories ?? [],
-    tags: book?.tags ?? [],
-    notes: book?.notes ?? "",
-    rating: book?.rating,
-    status: book?.status ?? "unread",
-    readyToDonate: book?.readyToDonate ?? false,
+      typeof source?.publishedYear === "number"
+        ? String(source.publishedYear)
+        : "",
+    categories: source?.categories ?? [],
+    tags: source?.tags ?? [],
+    notes: source?.notes ?? "",
+    rating: source?.rating,
+    status: source?.status ?? "unread",
+    readyToDonate: source?.readyToDonate ?? false,
     folderIdSelect,
   };
 }
@@ -106,7 +115,11 @@ export function BookForm(props: Props) {
 
   const { register, handleSubmit, watch, reset, setValue } =
     useForm<FormValues>({
-      defaultValues: toFormValues(props.editingBook, props.preferredFolderId),
+      defaultValues: toFormValues(
+        props.editingBook,
+        props.preferredFolderId,
+        props.prefill,
+      ),
     });
 
   const categoryTagOptions = useLiveQuery(() => getCategoryTagOptions(), [], {
@@ -131,14 +144,22 @@ export function BookForm(props: Props) {
   const formSnapshot = watch();
 
   useEffect(() => {
-    reset(toFormValues(props.editingBook));
+    reset(toFormValues(props.editingBook, props.preferredFolderId));
     setCoverImage(props.editingBook?.coverImage);
     setAdditionalImages(props.editingBook?.additionalImages ?? []);
 
     if (props.editingBook) {
       setShowMore(true);
     }
-  }, [props.editingBook, reset]);
+  }, [props.editingBook, props.preferredFolderId, reset]);
+
+  useEffect(() => {
+    if (props.editingBook || !props.prefill) return;
+    reset(toFormValues(undefined, props.preferredFolderId, props.prefill));
+    setCoverImage(props.prefill.coverImage);
+    setAdditionalImages(props.prefill.additionalImages ?? []);
+    setShowMore(true);
+  }, [props.prefill, props.editingBook, props.preferredFolderId, reset]);
 
   useEffect(() => {
     if (props.editingBook) return;
@@ -153,7 +174,7 @@ export function BookForm(props: Props) {
 
   useEffect(() => {
     void (async () => {
-      if (props.editingBook) return;
+      if (props.editingBook || props.prefill) return;
       const draft = await getDraft(DRAFT_KEY);
       if (!draft?.payload) return;
       try {
@@ -228,7 +249,7 @@ export function BookForm(props: Props) {
         // noop
       }
     })();
-  }, [props.editingBook, reset]);
+  }, [props.editingBook, props.prefill, reset]);
 
   useEffect(() => {
     if (props.editingBook) return;

@@ -2,8 +2,10 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Menu, Plus } from "lucide-react";
+import { BarcodeScanModal } from "../components/BarcodeScanModal";
 import { Sidebar } from "../components/Sidebar";
 import { TopToolbar } from "../components/TopToolbar";
+import { WebSearchModal } from "../components/WebSearchModal";
 import { GalleryView } from "../components/GalleryView";
 import {
   BookContextMenu,
@@ -48,6 +50,7 @@ import { useSelectionStore } from "../stores/selectionStore";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
 import { useHotkeys } from "../hooks/useHotkeys";
 import { useMediaQuery } from "../hooks/useMediaQuery";
+import { cameraScanSupported } from "../utils/camera";
 
 type PendingConfirm =
   | { type: "softDelete"; book: Book }
@@ -122,9 +125,13 @@ export function ShelfPage() {
   const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(
     null,
   );
+  const [webSearchOpen, setWebSearchOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
+  const [prefillDraft, setPrefillDraft] = useState<BookDraft | undefined>();
 
   const debouncedSearch = useDebouncedValue(search, 180);
   const isMobile = useMediaQuery("(max-width: 1023px)");
+  const showScanButton = isMobile && cameraScanSupported();
   const searchRef = useRef<HTMLInputElement | null>(null);
 
   const {
@@ -240,6 +247,13 @@ export function ShelfPage() {
     [activeFolderId],
   );
 
+  const applyPrefill = (draft: BookDraft) => {
+    setEditingBook(undefined);
+    setPrefillDraft(draft);
+    if (isMobile) setSidebarOpen(true);
+    addToast({ message: "Book details loaded — review and save" });
+  };
+
   const folderScopeLabelText = useMemo(() => {
     if (activeFolderId === "uncategorized") return undefined;
     const name = folderRows.find((f) => f.id === activeFolderId)?.name;
@@ -324,10 +338,12 @@ export function ShelfPage() {
       return;
     }
     await addBook(payload);
+    setPrefillDraft(undefined);
     addToast({ message: "Book added" });
   };
 
   const startEditing = (book: Book) => {
+    setPrefillDraft(undefined);
     setEditingBook(book);
     if (isMobile) setSidebarOpen(true);
   };
@@ -526,6 +542,7 @@ export function ShelfPage() {
               onSave={handleSave}
               editingBook={editingBook}
               onCancelEdit={() => setEditingBook(undefined)}
+              prefill={prefillDraft}
               stats={stats}
               {...sidebarFolderNavProps}
             />
@@ -557,6 +574,9 @@ export function ShelfPage() {
             trashedCount={trashedBooks.length}
             onOpenTrash={() => setTrashOpen(true)}
             folderScopeLabel={folderScopeLabelText}
+            onOpenWebSearch={() => setWebSearchOpen(true)}
+            onOpenScan={() => setScanOpen(true)}
+            showScanButton={showScanButton}
           />
 
           <div className="min-h-0 flex-1">
@@ -687,9 +707,11 @@ export function ShelfPage() {
                 onSave={async (payload) => {
                   await handleSave(payload);
                   setSidebarOpen(false);
+                  setPrefillDraft(undefined);
                 }}
                 editingBook={editingBook}
                 onCancelEdit={() => setEditingBook(undefined)}
+                prefill={prefillDraft}
                 stats={stats}
                 {...sidebarFolderNavProps}
               />
@@ -764,6 +786,16 @@ export function ShelfPage() {
         onDeleteAllForever={() => {
           void handlePermanentlyDeleteAllFromTrash();
         }}
+      />
+      <WebSearchModal
+        open={webSearchOpen}
+        onOpenChange={setWebSearchOpen}
+        onSelect={applyPrefill}
+      />
+      <BarcodeScanModal
+        open={scanOpen}
+        onOpenChange={setScanOpen}
+        onSelect={applyPrefill}
       />
       <ToastStack
         items={toasts}

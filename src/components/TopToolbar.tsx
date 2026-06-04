@@ -8,6 +8,8 @@ import {
   Download,
   Upload,
   Trash2,
+  Globe,
+  ScanLine,
 } from "lucide-react";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import type { QuickFilter, SortMode, ViewMode } from "../features/books/types";
@@ -36,6 +38,9 @@ type Props = {
   trashedCount: number;
   onOpenTrash: () => void;
   folderScopeLabel?: string;
+  onOpenWebSearch: () => void;
+  onOpenScan?: () => void;
+  showScanButton?: boolean;
 };
 
 const QUICK_FILTERS: QuickFilter[] = [
@@ -66,6 +71,46 @@ export function TopToolbar(props: Props) {
               aria-label="Global book search"
             />
           </label>
+
+          <div className="inline-flex items-center rounded-lg border border-stone-300 bg-stone-50 p-1 dark:border-stone-700 dark:bg-stone-900">
+            <Tooltip.Root>
+              <Tooltip.Trigger asChild>
+                <button
+                  type="button"
+                  onClick={props.onOpenWebSearch}
+                  className="rounded-md p-1 hover:bg-stone-200 dark:hover:bg-stone-800"
+                  aria-label="Add book from web"
+                >
+                  <Globe size={14} />
+                </button>
+              </Tooltip.Trigger>
+              <Tooltip.Portal>
+                <Tooltip.Content className="z-[100] rounded-md bg-stone-900 px-2 py-1 text-xs text-stone-50 shadow dark:bg-stone-100 dark:text-stone-900">
+                  Add from web (Open Library)
+                </Tooltip.Content>
+              </Tooltip.Portal>
+            </Tooltip.Root>
+
+            {props.showScanButton && props.onOpenScan ? (
+              <Tooltip.Root>
+                <Tooltip.Trigger asChild>
+                  <button
+                    type="button"
+                    onClick={props.onOpenScan}
+                    className="rounded-md p-1 hover:bg-stone-200 dark:hover:bg-stone-800"
+                    aria-label="Scan ISBN barcode"
+                  >
+                    <ScanLine size={14} />
+                  </button>
+                </Tooltip.Trigger>
+                <Tooltip.Portal>
+                  <Tooltip.Content className="z-[100] rounded-md bg-stone-900 px-2 py-1 text-xs text-stone-50 shadow dark:bg-stone-100 dark:text-stone-900">
+                    Scan ISBN barcode
+                  </Tooltip.Content>
+                </Tooltip.Portal>
+              </Tooltip.Root>
+            ) : null}
+          </div>
 
           <SingleSelect
             value={props.sortMode}
