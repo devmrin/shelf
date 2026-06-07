@@ -1,7 +1,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Menu, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { BarcodeScanModal } from "../components/BarcodeScanModal";
 import { Sidebar } from "../components/Sidebar";
 import { TopToolbar } from "../components/TopToolbar";
@@ -578,6 +578,8 @@ export function ShelfPage() {
             onOpenWebSearch={() => setWebSearchOpen(true)}
             onOpenScan={() => setScanOpen(true)}
             showScanButton={showScanButton}
+            isMobile={isMobile}
+            onOpenSidebar={() => setSidebarOpen(true)}
           />
 
           <div className="min-h-0 flex-1">
@@ -723,24 +725,14 @@ export function ShelfPage() {
       </AnimatePresence>
 
       {isMobile ? (
-        <>
-          <button
-            type="button"
-            className="fixed left-3 top-3 z-30 rounded-lg border border-stone-300 bg-stone-50/90 p-2 backdrop-blur dark:border-stone-700 dark:bg-stone-900/90"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Open sidebar"
-          >
-            <Menu size={16} />
-          </button>
-          <button
-            type="button"
-            className="fixed bottom-5 right-5 z-30 rounded-full bg-stone-900 p-3 text-stone-50 shadow-lg dark:bg-stone-100 dark:text-stone-900"
-            onClick={() => setSidebarOpen(true)}
-            aria-label="Add new book"
-          >
-            <Plus size={18} />
-          </button>
-        </>
+        <button
+          type="button"
+          className="fixed bottom-5 right-5 z-30 rounded-full bg-stone-900 p-3 text-stone-50 shadow-lg dark:bg-stone-100 dark:text-stone-900"
+          onClick={() => setSidebarOpen(true)}
+          aria-label="Add new book"
+        >
+          <Plus size={18} />
+        </button>
       ) : null}
 
       <BookContextMenu
