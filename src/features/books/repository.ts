@@ -186,8 +186,14 @@ export async function getTrashedBooks() {
   return books.sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0))
 }
 
-function applyFolderScope(books: Book[], folderScope: ActiveFolderId | undefined) {
+function applyFolderScope(
+  books: Book[],
+  folderScope: ActiveFolderId | 'all' | undefined,
+) {
   const scope = folderScope ?? 'uncategorized'
+  if (scope === 'all') {
+    return books
+  }
   if (scope === 'uncategorized') {
     return books.filter((book) => book.folderId == null || book.folderId === '')
   }
@@ -198,7 +204,7 @@ export async function queryBooks(params: {
   search: string
   filters: BookFilters
   sort: SortMode
-  folderScope?: ActiveFolderId
+  folderScope?: ActiveFolderId | 'all'
 }) {
   const { search, filters, sort, folderScope } = params
   const books = await db.books.toArray()
@@ -386,20 +392,17 @@ export async function moveBooksToFolder(ids: string[], folderId: string | null) 
     if (!folder) throw new Error('Folder not found')
   }
 
-  const books = await db.books.bulkGet(ids)
-  const updates = books
-    .filter((book): book is Book => Boolean(book))
-    .map((book) => ({
-      key: book.id,
-      changes: {
-        folderId: folderId ?? undefined,
-        updatedAt: Date.now(),
-      },
-    }))
+  const existing = (await db.books.bulkGet(ids)).filter(
+    (book): book is Book => Boolean(book),
+  )
+  if (!existing.length) return
 
-  if (updates.length) {
-    await db.books.bulkUpdate(updates)
-  }
+  const now = Date.now()
+  await db.transaction('rw', db.books, async () => {
+    for (const book of existing) {
+      await db.books.update(book.id, { folderId: folderId ?? undefined, updatedAt: now })
+    }
+  })
 }
 
 export async function countUncategorizedBooks() {

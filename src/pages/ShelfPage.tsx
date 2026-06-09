@@ -19,6 +19,7 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { TrashDialog } from "../components/TrashDialog";
 import { ToastStack, type ToastItem } from "../components/ToastStack";
 import type {
+  ActiveFolderId,
   Book,
   BookDraft,
   Folder,
@@ -207,6 +208,21 @@ export function ShelfPage() {
       [],
     ) ?? [];
 
+  // Gallery view shows every book grouped into folder sections, so it ignores
+  // the sidebar folder scope (but still honors search / quick filters / sort).
+  const galleryBooks =
+    useLiveQuery(
+      () =>
+        queryBooks({
+          search: debouncedSearch,
+          filters: toFilters(quickFilters, selectedCategories, selectedTags),
+          sort: sortMode,
+          folderScope: "all",
+        }),
+      [debouncedSearch, quickFilters, sortMode, selectedCategories, selectedTags],
+      [],
+    ) ?? [];
+
   const stats = useLiveQuery(() => collectionStats(), [books.length], {
     total: 0,
     rated: 0,
@@ -255,10 +271,13 @@ export function ShelfPage() {
   };
 
   const folderScopeLabelText = useMemo(() => {
+    // Gallery view shows every folder as its own section, so folder scope
+    // doesn't apply there — only the table view is scoped.
+    if (viewMode === "gallery") return undefined;
     if (activeFolderId === "uncategorized") return undefined;
     const name = folderRows.find((f) => f.id === activeFolderId)?.name;
     return name ? `Showing: ${name}` : undefined;
-  }, [activeFolderId, folderRows]);
+  }, [viewMode, activeFolderId, folderRows]);
 
   const relocateBooksToFolder = async (
     bookIds: string[],
@@ -501,7 +520,18 @@ export function ShelfPage() {
     folders: folderRows,
     uncategorizedCount,
     activeFolderId,
-    onSelectFolder: setActiveFolderId,
+    onSelectFolder: (id: ActiveFolderId) => {
+      setActiveFolderId(id);
+      // In gallery view, folders are sections rather than a scope, so jump to
+      // the matching section instead of filtering the whole view.
+      if (viewMode === "gallery" && id !== "uncategorized") {
+        requestAnimationFrame(() => {
+          document
+            .querySelector(`[data-folder-section="${id}"]`)
+            ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+    },
     onCreateFolder: handleCreateFolderFromSidebar,
     onRenameFolder: handleRenameFolderFromSidebar,
     onRequestDeleteFolder: (folder: Folder) =>
@@ -583,7 +613,8 @@ export function ShelfPage() {
           />
 
           <div className="min-h-0 flex-1">
-            {books.length === 0 ? (
+            {(viewMode === "gallery" ? galleryBooks.length : books.length) ===
+            0 ? (
               <EmptyState
                 title={
                   debouncedSearch.trim() ||
@@ -625,7 +656,7 @@ export function ShelfPage() {
               />
             ) : viewMode === "gallery" ? (
               <GalleryView
-                books={books}
+                books={galleryBooks}
                 selectedIds={selectedIds}
                 folderOptions={folderRows.map((folder) => ({
                   id: folder.id,
@@ -643,6 +674,9 @@ export function ShelfPage() {
                     x: event.clientX,
                     y: event.clientY,
                   });
+                }}
+                onMoveBooksToFolder={(folderId, bookIds) => {
+                  void relocateBooksToFolder(bookIds, folderId);
                 }}
               />
             ) : (
