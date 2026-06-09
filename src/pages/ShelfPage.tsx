@@ -186,33 +186,11 @@ export function ShelfPage() {
     [taxonomyOptions.tags, selectedTags],
   );
 
+  // Both gallery and table show every book (gallery groups them into folder
+  // sections, table lists them flat). The sidebar folder nav is no longer a
+  // view filter, so neither view is scoped — only search / quick filters / sort
+  // apply here.
   const books =
-    useLiveQuery(
-      () =>
-        queryBooks({
-          search: debouncedSearch,
-          filters: toFilters(
-            quickFilters,
-            selectedCategories,
-            selectedTags,
-          ),
-          sort: sortMode,
-          folderScope: activeFolderId,
-        }),
-      [
-        debouncedSearch,
-        quickFilters,
-        sortMode,
-        selectedCategories,
-        selectedTags,
-        activeFolderId,
-      ],
-      [],
-    ) ?? [];
-
-  // Gallery view shows every book grouped into folder sections, so it ignores
-  // the sidebar folder scope (but still honors search / quick filters / sort).
-  const galleryBooks =
     useLiveQuery(
       () =>
         queryBooks({
@@ -624,8 +602,7 @@ export function ShelfPage() {
           />
 
           <div className="min-h-0 flex-1">
-            {(viewMode === "gallery" ? galleryBooks.length : books.length) ===
-            0 ? (
+            {books.length === 0 ? (
               <EmptyState
                 title={
                   debouncedSearch.trim() ||
@@ -635,9 +612,7 @@ export function ShelfPage() {
                     ? "No results"
                     : stats.total === 0
                       ? "Your shelf is empty"
-                      : activeFolderId === "uncategorized"
-                        ? "No uncategorized books"
-                        : "No books in this folder"
+                      : "No matching books"
                 }
                 description={
                   debouncedSearch.trim()
@@ -645,9 +620,7 @@ export function ShelfPage() {
                     : quickFilterEmptyState ??
                       (stats.total === 0
                         ? "Add your first book from the sidebar."
-                        : activeFolderId === "uncategorized"
-                          ? "Every book is in a folder, or this view is filtered. Pick a folder below to see those books."
-                          : "Drag books here from Uncategorized or another folder, or assign this folder while editing.")
+                        : "Clear your filters to see your books.")
                 }
                 action={
                   <button
@@ -667,7 +640,7 @@ export function ShelfPage() {
               />
             ) : viewMode === "gallery" ? (
               <GalleryView
-                books={galleryBooks}
+                books={books}
                 selectedIds={selectedIds}
                 folderOptions={folderRows.map((folder) => ({
                   id: folder.id,
