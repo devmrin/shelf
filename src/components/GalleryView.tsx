@@ -83,7 +83,7 @@ export function GalleryView({
 
                   {/* Cover face */}
                   <div
-                    className="book3d-cover"
+                    className={`book3d-cover ${status === "completed" ? "opacity-90 grayscale-[40%]" : ""}`}
                     style={
                       book.coverImage
                         ? undefined
@@ -104,15 +104,17 @@ export function GalleryView({
 
                     <div className="book3d-spine" />
 
-                    {/* Title / author overlaid on the cover */}
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/40 to-transparent px-2.5 pb-2.5 pt-7">
-                      <h3 className="line-clamp-3 text-[12.5px] font-semibold leading-tight text-white drop-shadow">
-                        {book.title}
-                      </h3>
-                      <p className="mt-0.5 line-clamp-1 text-[10.5px] font-medium text-white/70">
-                        {book.author || "Unknown author"}
-                      </p>
-                    </div>
+                    {/* Title / author shown only when there's no cover image */}
+                    {!book.coverImage ? (
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/40 to-transparent px-2.5 pb-2.5 pt-7">
+                        <h3 className="line-clamp-3 text-[12.5px] font-semibold leading-tight text-white drop-shadow">
+                          {book.title}
+                        </h3>
+                        <p className="mt-0.5 line-clamp-1 text-[10.5px] font-medium text-white/70">
+                          {book.author || "Unknown author"}
+                        </p>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
@@ -120,7 +122,7 @@ export function GalleryView({
               </div>
 
               {/* Footer: rating + status + actions */}
-              <div className="mt-2 flex items-center justify-between px-0.5">
+              <div className="mx-auto mt-2 flex w-[140px] items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <div
                     className="flex shrink-0 items-center gap-0.5"
