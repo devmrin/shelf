@@ -412,8 +412,6 @@ export function TopToolbar(props: Props) {
             triggerClassName="flex h-9 w-[12rem] items-center justify-between rounded-lg border border-stone-300 bg-stone-50 px-2 text-left text-sm text-stone-900 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100"
             options={SORT_OPTIONS}
           />
-
-          <ThemeButtons {...props} />
         </div>
 
         <div className="mt-2 flex items-center justify-between gap-2">

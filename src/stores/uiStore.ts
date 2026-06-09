@@ -6,6 +6,8 @@ type UIState = {
   viewMode: ViewMode
   sortMode: SortMode
   sidebarOpen: boolean
+  /** Desktop-only: collapse the sidebar down to a slim rail */
+  sidebarCollapsed: boolean
   darkMode: 'light' | 'dark' | 'system'
   quickFilters: QuickFilter[]
   /** Taxonomy dropdown filters — OR semantics per type in queryBooks */
@@ -17,6 +19,7 @@ type UIState = {
   setViewMode: (value: ViewMode) => void
   setSortMode: (value: SortMode) => void
   setSidebarOpen: (value: boolean) => void
+  setSidebarCollapsed: (value: boolean) => void
   setDarkMode: (value: 'light' | 'dark' | 'system') => void
   toggleQuickFilter: (value: QuickFilter) => void
   setSelectedCategories: (value: string[]) => void
@@ -31,6 +34,7 @@ export const useUIStore = create<UIState>()(
       viewMode: 'gallery',
       sortMode: 'created-desc',
       sidebarOpen: true,
+      sidebarCollapsed: false,
       darkMode: 'system',
       quickFilters: [],
       selectedCategories: [],
@@ -40,6 +44,7 @@ export const useUIStore = create<UIState>()(
       setViewMode: (viewMode) => set({ viewMode }),
       setSortMode: (sortMode) => set({ sortMode }),
       setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
+      setSidebarCollapsed: (sidebarCollapsed) => set({ sidebarCollapsed }),
       setDarkMode: (darkMode) => set({ darkMode }),
       toggleQuickFilter: (value) =>
         set((state) => ({
