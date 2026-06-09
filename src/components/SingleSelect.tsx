@@ -12,6 +12,7 @@ type Props = {
   onValueChange: (value: string) => void;
   ariaLabel: string;
   triggerClassName?: string;
+  leadingIcon?: React.ReactNode;
 };
 
 export function SingleSelect({
@@ -20,6 +21,7 @@ export function SingleSelect({
   onValueChange,
   ariaLabel,
   triggerClassName,
+  leadingIcon,
 }: Props) {
   return (
     <Select.Root value={value} onValueChange={onValueChange}>
@@ -30,7 +32,12 @@ export function SingleSelect({
         }
         aria-label={ariaLabel}
       >
-        <Select.Value />
+        <span className="flex min-w-0 items-center gap-1.5">
+          {leadingIcon ? (
+            <span className="shrink-0 text-stone-500">{leadingIcon}</span>
+          ) : null}
+          <Select.Value />
+        </span>
         <Select.Icon>
           <ChevronDown size={14} className="text-stone-500" />
         </Select.Icon>

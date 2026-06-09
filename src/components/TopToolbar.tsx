@@ -13,6 +13,7 @@ import {
   Menu,
   SlidersHorizontal,
   X,
+  ArrowUpDown,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
@@ -94,15 +95,16 @@ function TooltipIcon({
 
 function SourceButtons(props: Props) {
   return (
-    <div className={segmentClassName}>
+    <div className="inline-flex items-center gap-2">
       <TooltipIcon label="Add from web (Open Library)">
         <button
           type="button"
           onClick={props.onOpenWebSearch}
-          className={iconButtonClassName}
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-stone-900 px-3 text-sm font-medium text-stone-50 hover:bg-stone-800 dark:bg-stone-100 dark:text-stone-900 dark:hover:bg-stone-200"
           aria-label="Add book from web"
         >
           <Globe size={14} />
+          <span>Add from web</span>
         </button>
       </TooltipIcon>
 
@@ -111,7 +113,7 @@ function SourceButtons(props: Props) {
           <button
             type="button"
             onClick={props.onOpenScan}
-            className={iconButtonClassName}
+            className={`${segmentClassName} ${iconButtonClassName}`}
             aria-label="Scan ISBN barcode"
           >
             <ScanLine size={14} />
@@ -260,7 +262,7 @@ function QuickFilterChips(props: Props) {
   );
 }
 
-function SearchInput(props: Props) {
+function SearchInput(props: Props & { trailing?: React.ReactNode }) {
   return (
     <label className="relative min-w-0 flex-1">
       <Search
@@ -270,10 +272,15 @@ function SearchInput(props: Props) {
       <input
         value={props.search}
         onChange={(event) => props.onSearchChange(event.target.value)}
-        className="h-9 w-full rounded-lg border border-stone-300 bg-stone-50 pl-8 pr-2 text-sm outline-none ring-stone-400 placeholder:text-stone-400 focus:ring-2 dark:border-stone-700 dark:bg-stone-900"
+        className={`h-9 w-full rounded-lg border border-stone-300 bg-stone-50 pl-8 text-sm outline-none ring-stone-400 placeholder:text-stone-400 focus:ring-2 dark:border-stone-700 dark:bg-stone-900 ${props.trailing ? "pr-24" : "pr-2"}`}
         placeholder="Search books, authors, categories, tags…"
         aria-label="Global book search"
       />
+      {props.trailing ? (
+        <div className="absolute right-1 top-1/2 flex -translate-y-1/2 items-center justify-center">
+          {props.trailing}
+        </div>
+      ) : null}
     </label>
   );
 }
@@ -349,6 +356,7 @@ export function TopToolbar(props: Props) {
                       props.onSortModeChange(value as SortMode)
                     }
                     ariaLabel="Sort books"
+                    leadingIcon={<ArrowUpDown size={14} />}
                     triggerClassName="flex h-9 w-full items-center justify-between rounded-lg border border-stone-300 bg-stone-50 px-2 text-left text-sm text-stone-900 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100"
                     options={SORT_OPTIONS}
                   />
@@ -400,7 +408,26 @@ export function TopToolbar(props: Props) {
       <header className="sticky top-0 z-30 border-b border-stone-200/70 bg-stone-100/95 px-3 py-2 backdrop-blur dark:border-stone-800 dark:bg-stone-950/95 sm:px-4">
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative flex min-w-[14rem] flex-1">
-            <SearchInput {...props} />
+            <SearchInput
+              {...props}
+              trailing={
+                <button
+                  type="button"
+                  onClick={() => setPanelOpen((open) => !open)}
+                  className={`relative inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs ${panelOpen ? "bg-stone-800 text-stone-100 dark:bg-stone-100 dark:text-stone-900" : "text-stone-600 hover:bg-stone-200 dark:text-stone-300 dark:hover:bg-stone-800"}`}
+                  aria-label="Filters"
+                  aria-expanded={panelOpen}
+                >
+                  <SlidersHorizontal size={14} />
+                  <span>Filters</span>
+                  {activeFilterCount > 0 ? (
+                    <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[10px] font-semibold text-white">
+                      {activeFilterCount}
+                    </span>
+                  ) : null}
+                </button>
+              }
+            />
           </div>
 
           <SourceButtons {...props} />
@@ -409,36 +436,51 @@ export function TopToolbar(props: Props) {
             value={props.sortMode}
             onValueChange={(value) => props.onSortModeChange(value as SortMode)}
             ariaLabel="Sort books"
-            triggerClassName="flex h-9 w-[12rem] items-center justify-between rounded-lg border border-stone-300 bg-stone-50 px-2 text-left text-sm text-stone-900 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100"
+            leadingIcon={<ArrowUpDown size={14} />}
+            triggerClassName="flex h-9 w-max items-center justify-between gap-2 rounded-lg border border-stone-300 bg-stone-50 px-2 text-left text-sm text-stone-900 dark:border-stone-700 dark:bg-stone-900 dark:text-stone-100"
             options={SORT_OPTIONS}
           />
-        </div>
-
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            <FilterSelect
-              ariaLabel="Filter by category"
-              allLabel="All categories"
-              options={props.categoryOptions}
-              value={props.selectedCategory}
-              onValueChange={props.onCategoryFilterChange}
-            />
-            <FilterSelect
-              ariaLabel="Filter by tag"
-              allLabel="All tags"
-              options={props.tagOptions}
-              value={props.selectedTag}
-              onValueChange={props.onTagFilterChange}
-            />
-
-            <QuickFilterChips {...props} />
-          </div>
 
           <div className="flex shrink-0 items-center gap-2">
-            <DataButtons {...props} />
             <ViewButtons {...props} />
           </div>
         </div>
+
+        <AnimatePresence initial={false}>
+          {panelOpen ? (
+            <motion.div
+              key="desktop-filter-panel"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.18 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-stone-200 pt-3 dark:border-stone-800">
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                  <FilterSelect
+                    ariaLabel="Filter by category"
+                    allLabel="All categories"
+                    options={props.categoryOptions}
+                    value={props.selectedCategory}
+                    onValueChange={props.onCategoryFilterChange}
+                  />
+                  <FilterSelect
+                    ariaLabel="Filter by tag"
+                    allLabel="All tags"
+                    options={props.tagOptions}
+                    value={props.selectedTag}
+                    onValueChange={props.onTagFilterChange}
+                  />
+
+                  <QuickFilterChips {...props} />
+                </div>
+
+                <DataButtons {...props} />
+              </div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
 
         {props.folderScopeLabel ? (
           <p className="mt-2 px-1 text-[11px] text-stone-600 dark:text-stone-400">
